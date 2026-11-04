@@ -37,6 +37,8 @@ Direction arrows matter very much. They tell a shooter where shots land, which i
 
 ## Decided by the owner
 
+- 2026-11-04 follow-ups: the Log tab is scan-only (no manual logging); the phone shows its camera / photos / files chooser; the review screen has + boxes for missing shots; a blocking loading overlay is shown while reading; the brand colour is Pantone 222 C `#6C1D45`; the UI never names Gemini.
+
 - Photo reading uses **Google Gemini on the free tier**. The owner's key is in `.env.local` (`GEMINI_API_KEY`). It was also pasted into chat, so rotate it before launch.
 - OCR.space was tested and rejected: it got 10/10 scores right but only 6/10 arrows.
 - **Supabase** for accounts and data. **Other shooters can sign up**, with sign-up open to anyone; fewer than 5 users are expected for now.
@@ -87,7 +89,7 @@ This is one photo. Before launch, test at least five more, covering different gl
 6. Saving merges by shot number into that session, with the newer reading winning, then persists. Photos can arrive in any order.
 7. Two sessions with the same date and label would share an id. If a scan's shot numbers already exist in the target session with different values, the review screen offers "save as a separate session" (label Other) alongside "replace". This is my call.
 8. The prompt also asks Gemini to flag a sighter screen. A flagged photo shows a warning and isn't saved as match shots unless the shooter overrides it. The existing Excel import already skips sighters. This is my call.
-9. A one-line note on the scan screen says photos are sent to Google Gemini's free tier, where Google may use them to improve its products.
+9. (Removed by the owner on 2026-11-04: no mention of the AI provider in the UI.) A one-line note on the scan screen says photos are sent to Google Gemini's free tier, where Google may use them to improve its products.
 
 The merge-and-check logic goes in the global metrics block, which can be tested in Node (see `CLAUDE.md`), with a small self-check covering a partial series, a replaced shot and a subtotal mismatch.
 

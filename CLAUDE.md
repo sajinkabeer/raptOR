@@ -58,6 +58,7 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 
 - Mobile-first single column (max-width 720px), sticky header, fixed bottom tab bar, safe-area insets.
 - Colors are CSS tokens on `:root`, redefined for dark mode under both `@media (prefers-color-scheme: dark) :root:not([data-theme="light"])` and `:root[data-theme="dark"]`. Update both blocks together.
+- Brand colour is Pantone 222 C, `#6C1D45` (`--accent` in light mode). Dark mode uses a lighter tint of the same 330° hue (`#DF86B3`) for contrast. Tier shades are tints and shades of that hue. Keep every text/background pair at 4.5:1 or better.
 - Score tiers `--h1..--h5` / `--ht1..--ht5` map to `tier()` (under 7, 7s, 8s, 9s, 10+).
 - Touch targets are at least 44px. Inputs use a 16px font so iOS doesn't zoom.
 
