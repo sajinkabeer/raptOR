@@ -1,0 +1,1280 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>raptOR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Math:wght@400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: one-column phone app. Sticky brand header, one scrolling body, fixed tab bar.
+   Pantone 222 on ivory; STIX Two Math for display and numbers, DM Mono for labels. */
+:root{
+  --bg:#FFFFF0; --card:#FFFFFA; --ink:#1A0010; --ink2:#4A2040; --ink3:#7A4766;
+  --line:rgba(118,0,78,.18); --line2:rgba(118,0,78,.45);
+  --accent:#76004E; --accent-ink:#FFFFF0; --soft:rgba(118,0,78,.07);
+  --good:#146C3A; --bad:#B42318; --warn:#8A5A00;
+  --h1:#EFD9E6; --h2:#D79DBF; --h3:#A44F86; --h4:#8A2A68; --h5:#76004E;
+  --ht1:#4A2040; --ht2:#2A0A20; --ht3:#FFFFF0; --ht4:#FFFFF0; --ht5:#FFFFF0;
+  --serif:'STIX Two Math','Times New Roman',Georgia,serif;
+  --mono:'DM Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#150010; --card:#1F0818; --ink:#F6EFE2; --ink2:#DCC6D3; --ink3:#AD8FA0;
+    --line:rgba(235,160,205,.2); --line2:rgba(235,160,205,.5);
+    --accent:#E27BB8; --accent-ink:#1A0010; --soft:rgba(226,123,184,.1);
+    --good:#5FD18E; --bad:#FF8F85; --warn:#E8B04A;
+    --h1:#3A1630; --h2:#5E2A4F; --h3:#8F3F78; --h4:#C2569C; --h5:#E58AC2;
+    --ht1:#DCC6D3; --ht2:#F6EFE2; --ht3:#FFFFF0; --ht4:#1A0010; --ht5:#1A0010;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#150010; --card:#1F0818; --ink:#F6EFE2; --ink2:#DCC6D3; --ink3:#AD8FA0;
+  --line:rgba(235,160,205,.2); --line2:rgba(235,160,205,.5);
+  --accent:#E27BB8; --accent-ink:#1A0010; --soft:rgba(226,123,184,.1);
+  --good:#5FD18E; --bad:#FF8F85; --warn:#E8B04A;
+  --h1:#3A1630; --h2:#5E2A4F; --h3:#8F3F78; --h4:#C2569C; --h5:#E58AC2;
+  --ht1:#DCC6D3; --ht2:#F6EFE2; --ht3:#FFFFF0; --ht4:#1A0010; --ht5:#1A0010;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.wrap{max-width:720px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-weight:700;margin:0;text-wrap:balance}
+.mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums}
+.lab{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+.logo{display:flex;align-items:center;gap:10px;min-width:0}
+.logo svg{width:30px;height:30px;flex:none;color:var(--accent)}
+.wm{font-size:24px;font-weight:700;letter-spacing:.01em;line-height:1}
+.wm span{color:var(--accent)}
+.sub{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:3px}
+.sync{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--ink3);display:inline-block}
+.sync.ok i{background:var(--good)} .sync.warn i{background:var(--warn)}
+
+main{padding-top:16px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px}
+.card h2{font-size:18px}
+.card h3{font-size:15px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--ink3)} .ink2{color:var(--ink2)}
+.small{font-size:13px}
+.hr{height:1px;background:var(--line);margin:2px 0}
+
+/* buttons / inputs */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:4px;border:1px solid var(--line2);background:transparent;color:var(--ink);font-weight:700;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.block{display:flex;width:100%}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.link{border:0;min-height:0;padding:0;color:var(--accent);text-decoration:underline;font-weight:400;background:none}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=password],select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line2);border-radius:4px;padding:9px 10px;min-height:44px;width:100%}
+textarea{min-height:76px;resize:vertical;font-family:var(--mono);font-size:14px}
+label.f{display:flex;flex-direction:column;gap:5px}
+.seg{display:flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
+.seg button{flex:1;border:0;background:transparent;min-height:40px;padding:0 8px;font-size:14px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:3px;border:1px solid var(--line2);white-space:nowrap}
+.chip.up{color:var(--good);border-color:var(--good)} .chip.down{color:var(--bad);border-color:var(--bad)} .chip.flat{color:var(--ink3)}
+.pill{font-family:var(--mono);font-size:11px;padding:2px 7px;border:1px solid var(--line2);border-radius:3px;color:var(--ink2)}
+
+/* hero tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{min-width:0}
+.tile .v{font-size:34px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tile .v small{font-size:16px;font-weight:400;color:var(--ink3);margin-left:1px}
+.tile .chip{margin-top:6px}
+@media (max-width:420px){.tile .v{font-size:28px}}
+
+/* tables */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);text-align:right;font-weight:400;padding:6px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:8px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td:last-child,th:last-child{padding-right:0}
+tr:last-child td{border-bottom:0}
+td.good{color:var(--good)} td.bad{color:var(--bad)}
+
+/* insights */
+.ins{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.ins li{padding-left:14px;border-left:2px solid var(--accent)}
+
+/* session list */
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.srow b{font-size:16px}
+.srow .st{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
+.srow .go{grid-row:1 / span 2;grid-column:2;align-self:center;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* shot grid */
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+@media (min-width:480px){.grid{grid-template-columns:repeat(10,minmax(0,1fr))}}
+.cell{position:relative;min-height:46px;border-radius:4px;border:1px solid transparent;font-family:var(--mono);font-size:14px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px 0}
+.cell .arw{opacity:.85}
+.t1{background:var(--h1);color:var(--ht1)} .t2{background:var(--h2);color:var(--ht2)} .t3{background:var(--h3);color:var(--ht3)} .t4{background:var(--h4);color:var(--ht4)} .t5{background:var(--h5);color:var(--ht5)}
+.cell.gap{background:transparent;border:1px dashed var(--line2);color:var(--ink3)}
+.cell .no{position:absolute;top:2px;left:4px;font-size:9px;opacity:.7}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:12px;height:12px;border-radius:2px;display:inline-block}
+
+/* dot plot */
+.dp{display:flex;flex-direction:column;gap:2px}
+.dp-row{display:grid;grid-template-columns:64px minmax(0,1fr) 48px;align-items:center;gap:8px;min-height:30px}
+.dp-l{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.dp-v{font-family:var(--mono);font-size:13px;text-align:right}
+.dp-t{position:relative;height:22px}
+.dp-t::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
+.dp-dot{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--card)}
+.dp-ref{position:absolute;top:2px;bottom:2px;width:0;border-left:1px dashed var(--ink3)}
+.dp-axis{display:grid;grid-template-columns:64px minmax(0,1fr) 48px;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+.dp-axis div{display:flex;justify-content:space-between}
+
+/* bars */
+.br{display:grid;grid-template-columns:62px minmax(0,1fr) 92px;align-items:center;gap:8px;min-height:28px}
+.br .tr{height:12px;background:var(--soft);border-radius:2px;overflow:hidden}
+.br .tr i{display:block;height:100%;background:var(--accent);border-radius:0 3px 3px 0;min-width:2px}
+.br .l{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.br .v{font-family:var(--mono);font-size:12.5px;text-align:right;white-space:nowrap}
+
+/* compass */
+.cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cc{border:1px solid var(--line);border-radius:4px;padding:8px 6px 10px;text-align:center;position:relative;overflow:hidden;min-height:78px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cc .arw{color:var(--accent)}
+.cc b{font-size:17px;font-variant-numeric:tabular-nums}
+.cc span{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+.cc i{position:absolute;left:0;bottom:0;height:4px;background:var(--accent)}
+.cc.mid{background:var(--soft);justify-content:center}
+
+/* line chart */
+.lc{position:relative;touch-action:pan-y}
+.lc svg{display:block;width:100%;height:auto;overflow:visible}
+.lc text{font-family:var(--mono);font-size:10.5px;fill:var(--ink3)}
+.lc .val{fill:var(--ink);font-size:11px}
+.lc .gl{stroke:var(--line);stroke-width:1}
+.lc .ln{stroke:var(--accent);stroke-width:2;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.lc .pt{fill:var(--accent);stroke:var(--card);stroke-width:2}
+.lc .cross{stroke:var(--ink3);stroke-width:1;stroke-dasharray:3 3}
+.tip{position:absolute;top:0;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-family:var(--mono);font-size:11.5px;padding:6px 8px;border-radius:3px;pointer-events:none;white-space:nowrap;z-index:5}
+.tip[hidden]{display:none}
+
+/* pads */
+.pads{display:flex;flex-direction:column;gap:12px}
+.pw{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.pd{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.pk{min-height:46px;border:1px solid var(--line2);background:var(--card);border-radius:4px;font-family:var(--mono);font-size:17px;font-weight:500}
+.pk[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pk:disabled{opacity:.3}
+.pdir{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-width:210px}
+.pdir .pk{min-height:48px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.read{font-size:46px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;min-width:96px}
+.last{display:flex;gap:6px;flex-wrap:wrap}
+.last span{font-family:var(--mono);font-size:13px;padding:3px 7px;border-radius:3px}
+
+/* sheet + toast */
+.scrim{position:fixed;inset:0;background:rgba(10,0,8,.55);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;max-height:90%;overflow:auto;background:var(--bg);border:1px solid var(--line2);border-radius:10px 10px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-family:var(--mono);font-size:13px;padding:9px 14px;border-radius:4px;z-index:80;max-width:90%;text-align:center}
+#toast[hidden]{display:none}
+
+/* tab bar */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--bg);border-top:1px solid var(--line2);padding:0 max(8px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px) max(8px,env(safe-area-inset-right,0px))}
+nav .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav button{border:0;background:none;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink3);font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;position:relative}
+nav button svg{width:22px;height:22px}
+nav button[aria-current=page]{color:var(--accent)}
+nav button[aria-current=page]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:2px;background:var(--accent)}
+details summary{cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);min-height:32px;display:flex;align-items:center}
+.note{font-size:13px;color:var(--ink2);border-left:2px solid var(--warn);padding-left:10px}
+.empty{text-align:center;padding:26px 8px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty svg{width:56px;height:56px;color:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--ink3)} .kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.cell.conflict{outline:2px solid var(--warn);outline-offset:1px}
+.check{font-size:13px;display:flex;gap:8px;align-items:center}
+.check.ok{color:var(--good)} .check.bad{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+        <circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.3"/>
+        <circle cx="18" cy="18" r="10" stroke="currentColor" stroke-width="1"/>
+        <circle cx="18" cy="18" r="4" stroke="currentColor" stroke-width="1"/>
+        <circle cx="18" cy="18" r="1.6" fill="currentColor"/>
+        <path d="M18 2v8M18 26v8M2 18h8M26 18h8" stroke="currentColor" stroke-width="1.2"/>
+      </svg>
+      <div><div class="wm">rapt<span>OR</span></div><div class="sub">10m air rifle log</div></div>
+    </div>
+    <div class="sync" id="sync"><i></i><span>Loading</span></div>
+  </header>
+  <main id="app"></main>
+</div>
+<nav aria-label="Sections"><div class="in" id="tabs"></div></nav>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="modal"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0/dist/umd/supabase.min.js"></script>
+<script>
+/*==METRICS-START==*/
+var DIRS = ['↖','↑','↗','←','→','↙','↓','↘'];
+var DIR_ANGLE = {'↑':0,'↗':45,'→':90,'↘':135,'↓':180,'↙':225,'←':270,'↖':315};
+var DEFAULT_CFG = {tens:10, mark:10.2, planned:60};
+function T(v){ return Math.round(v*10); }
+function r1(v){ return Math.round(v*10)/10; }
+function seriesNo(n){ return Math.ceil(n/10); }
+function shotsOf(s){
+  return ((s && s.shots) || []).filter(function(x){ return x && isFinite(x.s) && x.s !== null && x.n > 0; })
+    .slice().sort(function(a,b){ return a.n - b.n; });
+}
+function calc(s, cfg){
+  cfg = cfg || DEFAULT_CFG;
+  var sh = shotsOf(s), n = sh.length;
+  var t = sh.map(function(x){ return T(x.s); });
+  var sumT = t.reduce(function(a,b){ return a+b; }, 0);
+  var tt = T(cfg.tens), mm = T(cfg.mark);
+  var o = {n:n, sum:sumT/10, avg:n ? sumT/10/n : null};
+  o.tensN = t.filter(function(v){ return v >= tt; }).length;
+  o.tensPct = n ? 100*o.tensN/n : null;
+  o.markN = t.filter(function(v){ return v >= mm; }).length;
+  o.markPct = n ? 100*o.markN/n : null;
+  o.under7 = t.filter(function(v){ return v < 70; }).length;
+  o.buckets = [['10s',100,1e9],['9s',90,100],['8s',80,90],['7s',70,80],['Under 7',-1e9,70]].map(function(b){
+    var c = t.filter(function(v){ return v >= b[1] && v < b[2]; }).length;
+    return {k:b[0], c:c, pct:n ? 100*c/n : 0};
+  });
+  if (n > 1){
+    var m = sumT/n;
+    var ss = t.reduce(function(a,v){ return a + (v-m)*(v-m); }, 0);
+    o.sd = Math.sqrt(ss/(n-1))/10;
+  } else o.sd = null;
+  var map = {};
+  sh.forEach(function(x){ var k = seriesNo(x.n); (map[k] = map[k] || []).push(x); });
+  o.series = Object.keys(map).map(Number).sort(function(a,b){ return a-b; }).map(function(k){
+    var a = map[k];
+    var st = a.reduce(function(p,x){ return p + T(x.s); }, 0);
+    return {no:k, n:a.length, sum:st/10, avg:st/10/a.length,
+      tens:a.filter(function(x){ return T(x.s) >= tt; }).length,
+      time:(s.seriesTimes && s.seriesTimes[k]) || ''};
+  });
+  if (n >= 20){
+    var h = Math.floor(n/2);
+    var av = function(a){ return a.reduce(function(p,v){ return p+v; }, 0)/a.length/10; };
+    o.first = av(t.slice(0,h)); o.second = av(t.slice(h)); o.fade = o.second - o.first; o.half = h;
+  } else { o.first = o.second = o.fade = null; }
+  o.pace = (n >= 10 && o.avg != null) ? o.avg*60 : null;
+  var maxN = n ? sh[n-1].n : 0;
+  o.fired = Math.max(+((s && s.fired) || 0), maxN);
+  var have = {}; sh.forEach(function(x){ have[x.n] = 1; });
+  o.missing = [];
+  for (var i = 1; i <= o.fired; i++){ if (!have[i]) o.missing.push(i); }
+  o.screenTotal = (s && s.screenTotal != null && isFinite(s.screenTotal)) ? +s.screenTotal : null;
+  o.screenDiff = o.screenTotal != null ? r1(o.screenTotal - o.sum) : null;
+  return o;
+}
+function compare(c, b){
+  if (!c || !b || c.n < 10 || b.n < 10) return null;
+  return {
+    avgPct:(c.avg-b.avg)/b.avg*100, avgDiff:c.avg-b.avg,
+    tensPts:c.tensPct-b.tensPct, tensRel:b.tensPct > 0 ? (c.tensPct-b.tensPct)/b.tensPct*100 : null,
+    markPts:c.markPct-b.markPct, pace:c.pace-b.pace,
+    sd:(c.sd != null && b.sd != null) ? c.sd-b.sd : null, under7:c.under7-b.under7
+  };
+}
+function pool(list){
+  var shots = [];
+  list.forEach(function(s){ shots = shots.concat(shotsOf(s)); });
+  return {shots:shots};
+}
+function defaultTime(label){
+  var l = (label || '').toLowerCase();
+  if (l.indexOf('morn') >= 0) return '08:00';
+  if (l.indexOf('after') >= 0) return '14:00';
+  if (l.indexOf('even') >= 0 || l.indexOf('night') >= 0) return '19:00';
+  return '12:00';
+}
+function sortKey(s){
+  var t = (s.seriesTimes && (s.seriesTimes[1] || s.seriesTimes['1'])) || defaultTime(s.label);
+  return s.date + ' ' + t;
+}
+function sortSessions(list){
+  return list.slice().sort(function(a,b){ var x = sortKey(a), y = sortKey(b); return x < y ? -1 : x > y ? 1 : 0; });
+}
+function byPosition(list){
+  var sums = [0,0,0,0,0,0,0,0,0,0], cnt = [0,0,0,0,0,0,0,0,0,0];
+  list.forEach(function(s){ shotsOf(s).forEach(function(x){ var p = (x.n-1)%10; sums[p] += T(x.s); cnt[p]++; }); });
+  return sums.map(function(v,i){ return {pos:i+1, n:cnt[i], avg:cnt[i] ? v/10/cnt[i] : null}; });
+}
+function bySeriesNo(list){
+  var m = {};
+  list.forEach(function(s){ shotsOf(s).forEach(function(x){ var k = seriesNo(x.n); m[k] = m[k] || {s:0,c:0}; m[k].s += T(x.s); m[k].c++; }); });
+  return Object.keys(m).map(Number).sort(function(a,b){ return a-b; }).map(function(k){ return {no:k, n:m[k].c, avg:m[k].s/10/m[k].c}; });
+}
+function dirStats(list){
+  var o = {}, tot = 0;
+  DIRS.forEach(function(d){ o[d] = {c:0, s:0}; });
+  list.forEach(function(s){ shotsOf(s).forEach(function(x){ if (o[x.d]){ o[x.d].c++; o[x.d].s += T(x.s); tot++; } }); });
+  DIRS.forEach(function(d){ o[d].avg = o[d].c ? o[d].s/10/o[d].c : null; o[d].pct = tot ? 100*o[d].c/tot : 0; });
+  return {by:o, total:tot};
+}
+function niceScale(mn, mx, n){
+  if (mx - mn < 1e-9){ mn -= 1; mx += 1; }
+  var raw = (mx-mn)/n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/mag;
+  var step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  var lo = Math.floor(mn/step + 1e-9)*step, hi = Math.ceil(mx/step - 1e-9)*step, t = [];
+  for (var v = lo; v <= hi + step/2; v += step) t.push(+v.toFixed(6));
+  return {lo:lo, hi:hi, ticks:t};
+}
+function slug(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'session'; }
+function makeId(date, label){ return date + '_' + slug(label); }
+function labelFromTime(hm){
+  var m = String(hm || '').match(/^(\d{1,2}):(\d{2})/); if (!m || +m[1] > 23) return 'Other';
+  return +m[1] < 12 ? 'Morning' : +m[1] < 17 ? 'Afternoon' : 'Evening';
+}
+function scanCheck(shots, subtotal){
+  var t = shots.reduce(function(a, x){ return a + T(x.s); }, 0);
+  var has = subtotal != null && isFinite(subtotal);
+  return {sum:t/10, subtotal:has ? +subtotal : null, ok:has ? t === T(subtotal) : null};
+}
+function scanConflicts(session, shots){
+  if (!session) return [];
+  var have = {}; shotsOf(session).forEach(function(x){ have[x.n] = x; });
+  return shots.filter(function(x){ var o = have[x.n]; return o && (T(o.s) !== T(x.s) || (o.d || '') !== (x.d || '')); }).map(function(x){ return x.n; });
+}
+function mergeShots(session, shots, time){
+  var s = JSON.parse(JSON.stringify(session)), by = {};
+  (s.shots || []).forEach(function(x){ by[x.n] = x; });
+  shots.forEach(function(x){ by[x.n] = {n:x.n, s:x.s, d:x.d || ''}; });
+  s.shots = Object.keys(by).map(function(k){ return by[k]; }).sort(function(a, b){ return a.n - b.n; });
+  s.fired = Math.max(+s.fired || 0, s.shots.length ? s.shots[s.shots.length-1].n : 0);
+  s.seriesTimes = s.seriesTimes || {};
+  if (time) shots.forEach(function(x){ var k = seriesNo(x.n); if (!s.seriesTimes[k]) s.seriesTimes[k] = time; });
+  return s;
+}
+function shotRanges(ns){
+  var out = [];
+  for (var i = 0; i < ns.length; i++){
+    var a = ns[i]; while (i + 1 < ns.length && ns[i+1] === ns[i] + 1) i++;
+    out.push(a === ns[i] ? String(a) : a + '–' + ns[i]);
+  }
+  return out.join(', ');
+}
+// Local copies with an unsynced upsert survive the server list; pending deletes stay hidden.
+function mergeRemote(local, remote, pending){
+  var mine = {}; local.forEach(function(s){ mine[s.id] = s; });
+  var out = [], seen = {};
+  remote.forEach(function(r){
+    seen[r.id] = 1;
+    if (pending[r.id] === 'delete') return;
+    var l = mine[r.id];
+    out.push(pending[r.id] === 'upsert' && l && (l.updatedAt || 0) >= (r.updatedAt || 0) ? l : r);
+  });
+  local.forEach(function(l){ if (!seen[l.id] && pending[l.id] === 'upsert') out.push(l); });
+  return out;
+}
+/*==METRICS-END==*/
+
+(function(){
+'use strict';
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var LABELS = ['Morning','Afternoon','Evening','Other'];
+var LS_LOCAL = 'raptor_v2_local'; // pre-account local data, offered for moving into the account
+
+var state = {
+  tab:'summary', sessions:[], cfg:Object.assign({}, DEFAULT_CFG), sync:'connecting',
+  focusId:null, cmp:'prev', openId:null, metric:'avg',
+  log:{active:null, date:'', label:'Morning', fired:60, whole:null, dec:null, dir:'', n:1, stack:[]},
+  edit:null, preview:null, stray:[], confirm:null, scan:null,
+  user:null, auth:{mode:'signin', email:'', busy:false, msg:''}
+};
+var lastSig = '';
+var $app = document.getElementById('app');
+
+/* ---------- small helpers ---------- */
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function todayISO(){ var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+function nowHM(){ var d = new Date(); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function dateParts(iso){ var p = String(iso).split('-'); return new Date(+p[0], +p[1]-1, +p[2], 12); }
+function fmtDate(iso){ var d = dateParts(iso); return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+function shortDate(iso){ var d = dateParts(iso); return d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+function nameOf(s){ return fmtDate(s.date) + ' · ' + s.label; }
+function shortName(s){ return shortDate(s.date) + ' ' + s.label; }
+function f1(v){ return v == null ? '–' : (+v).toFixed(1); }
+function f2(v){ return v == null ? '–' : (+v).toFixed(2); }
+function signed(v, d, unit){
+  if (v == null || !isFinite(v)) return '–';
+  var r = +(+v).toFixed(d);
+  if (r === 0) return (0).toFixed(d) + (unit || '');
+  return (r > 0 ? '+' : '−') + Math.abs(r).toFixed(d) + (unit || '');
+}
+function tier(sc){ var t = T(sc); return t >= 100 ? 5 : t >= 90 ? 4 : t >= 80 ? 3 : t >= 70 ? 2 : 1; }
+function arrow(d, size){
+  var a = DIR_ANGLE[d]; if (a == null) return '';
+  size = size || 14;
+  return '<svg class="arw" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" style="transform:rotate('+a+'deg)" aria-hidden="true"><path d="M12 20V5M6 10.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function toast(msg){
+  var el = document.getElementById('toast'); el.textContent = msg; el.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(function(){ el.hidden = true; }, 2600);
+}
+function getSession(id){ for (var i = 0; i < state.sessions.length; i++) if (state.sessions[i].id === id) return state.sessions[i]; return null; }
+function sorted(){ return sortSessions(state.sessions); }
+function cfg(){ return state.cfg; }
+
+/* ---------- storage ---------- */
+// Anon key is public by design; row-level security is what protects each shooter's data.
+var SUPABASE_URL = 'https://kmxjerumxxcszvpiiixc.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtteGplcnVteHhjc3p2cGlpaXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3NzMwOTYsImV4cCI6MjEwOTM0OTA5Nn0.Gmivq2JTfWvm_qn63jTgKX7AEyQ4OzGd9AsH88eySL4';
+var sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+function lsGet(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function plain(s){
+  return JSON.parse(JSON.stringify({
+    id:s.id, date:s.date, label:s.label, fired:s.fired || 0, shots:s.shots || [], seriesTimes:s.seriesTimes || {},
+    screenTotal:s.screenTotal == null ? null : s.screenTotal, note:s.note || '', createdAt:s.createdAt || Date.now(), updatedAt:s.updatedAt || Date.now()
+  }));
+}
+function toRow(s){
+  var p = plain(s);
+  return {user_id:state.user.id, id:p.id, date:p.date, label:p.label, fired:p.fired, shots:p.shots, series_times:p.seriesTimes,
+    screen_total:p.screenTotal, note:p.note, created_at:p.createdAt, updated_at:p.updatedAt};
+}
+function fromRow(r){
+  return {id:r.id, date:r.date, label:r.label, fired:+r.fired || 0, shots:r.shots || [], seriesTimes:r.series_times || {},
+    screenTotal:r.screen_total == null ? null : +r.screen_total, note:r.note || '', createdAt:+r.created_at, updatedAt:+r.updated_at};
+}
+// Write-ahead: every change lands in localStorage first with a pending mark; flush() uploads and clears marks.
+var pending = {}, timers = {}, flushing = false, retryTimer = null;
+function key(k){ return 'raptor_v3_' + state.user.id + '_' + k; }
+function mirror(){
+  if (!state.user) return;
+  lsSet(key('sessions'), state.sessions.map(plain)); lsSet(key('pending'), pending);
+}
+function schedule(id){ clearTimeout(timers[id]); timers[id] = setTimeout(function(){ delete timers[id]; flush(); }, 350); }
+function persist(s){
+  s.updatedAt = Date.now();
+  var i = state.sessions.findIndex(function(x){ return x.id === s.id; });
+  if (i < 0) state.sessions.push(s); else state.sessions[i] = s;
+  pending[s.id] = 'upsert'; mirror(); schedule(s.id);
+  lastSig = signature();
+}
+function removeSession(id){
+  state.sessions = state.sessions.filter(function(s){ return s.id !== id; });
+  pending[id] = 'delete'; mirror(); schedule(id);
+  lastSig = signature();
+}
+async function flush(){
+  if (!state.user || !sb || flushing) return;
+  flushing = true;
+  var uid = state.user.id, failed = false;
+  try {
+    var ids = Object.keys(pending);
+    for (var i = 0; i < ids.length; i++){
+      var id = ids[i], op = pending[id], s = getSession(id), sent = s && s.updatedAt, res;
+      if (op === 'upsert' && !s){ delete pending[id]; continue; }
+      res = op === 'delete' ? await sb.from('sessions').delete().eq('id', id) : await sb.from('sessions').upsert(toRow(s));
+      if (!state.user || state.user.id !== uid) return;
+      if (res.error){ console.error(res.error); failed = true; break; }
+      var now = getSession(id);
+      // An edit made while this request was in flight keeps its mark and goes up on the next flush.
+      if (pending[id] === op && (op === 'delete' ? !now : now && now.updatedAt === sent)) delete pending[id];
+    }
+  } catch(e){ console.error(e); failed = true; }
+  finally { flushing = false; }
+  mirror();
+  var left = Object.keys(pending).length;
+  state.sync = failed ? 'slow' : left ? 'saving' : 'cloud'; setSyncUI();
+  clearTimeout(retryTimer);
+  if (failed) retryTimer = setTimeout(flush, 30000);
+  else if (left) retryTimer = setTimeout(flush, 500);
+}
+function saveCfg(){
+  if (!state.user) return;
+  lsSet(key('cfg'), state.cfg);
+  // shortcut: settings aren't queued for retry like sessions; fine while they rarely change, queue them if that changes.
+  sb.from('settings').upsert({user_id:state.user.id, tens:state.cfg.tens, mark:state.cfg.mark, planned:state.cfg.planned})
+    .then(function(r){ if (r.error){ console.error(r.error); toast('Settings saved on this device only'); } });
+}
+function signature(){
+  return JSON.stringify(state.sessions.map(function(s){ return [s.id, s.updatedAt, (s.shots||[]).length]; })) + JSON.stringify(state.cfg) + state.sync;
+}
+function setSyncUI(){
+  var el = document.getElementById('sync');
+  if (!state.user){ el.hidden = true; return; }
+  el.hidden = false;
+  var map = {cloud:['ok','Saved'], saving:['warn','Saving'], connecting:['warn','Connecting'], slow:['warn','Offline · will sync']};
+  var m = map[state.sync] || map.connecting;
+  el.className = 'sync ' + m[0]; el.querySelector('span').textContent = m[1];
+}
+async function loadAccount(){
+  var uid = state.user.id;
+  state.sessions = lsGet(key('sessions'), []); pending = lsGet(key('pending'), {});
+  state.cfg = Object.assign({}, DEFAULT_CFG, lsGet(key('cfg'), {}));
+  state.log.fired = state.cfg.planned; state.sync = 'connecting'; render();
+  // shortcut: one select returns at most 1000 sessions (PostgREST default); page it if a shooter ever passes that.
+  var r = await sb.from('sessions').select('*'), c = await sb.from('settings').select('*').maybeSingle();
+  if (!state.user || state.user.id !== uid) return;
+  if (r.error){
+    console.error(r.error); state.sync = 'slow'; render();
+    clearTimeout(retryTimer); retryTimer = setTimeout(flush, 30000);
+    return;
+  }
+  state.sessions = mergeRemote(state.sessions, r.data.map(fromRow), pending);
+  if (c.data){ state.cfg = {tens:+c.data.tens, mark:+c.data.mark, planned:+c.data.planned}; lsSet(key('cfg'), state.cfg); state.log.fired = state.cfg.planned; }
+  var ids = {}; state.sessions.forEach(function(s){ ids[s.id] = 1; });
+  state.stray = lsGet(LS_LOCAL, []).filter(function(s){ return s && s.id && !ids[s.id]; });
+  mirror(); state.sync = 'cloud'; lastSig = signature(); render();
+  flush();
+}
+function initStore(){
+  state.log.date = todayISO();
+  if (!sb){ state.auth.msg = 'Could not load sign-in. Check your connection and reload.'; render(); return; }
+  sb.auth.onAuthStateChange(function(ev, session){
+    if (ev === 'PASSWORD_RECOVERY') state.auth.mode = 'recover';
+    var u = session && session.user, was = state.user && state.user.id;
+    state.user = u ? {id:u.id, email:u.email} : null;
+    if (!state.user){ state.sessions = []; pending = {}; state.stray = []; state.tab = 'summary'; state.openId = null; state.log.active = null; state.scan = null; }
+    // Supabase calls must not be awaited inside this callback.
+    if (state.user && state.user.id !== was) setTimeout(loadAccount, 0); else render();
+  });
+  window.addEventListener('online', flush);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) flush(); });
+}
+
+/* ---------- views ---------- */
+var ICONS = {
+  summary:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+  log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></svg>',
+  sessions:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>',
+  trends:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 19.5h17M4 15l5-5 4 3 7-8"/></svg>',
+  data:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></svg>'
+};
+var TABS = [['summary','Summary'],['log','Log'],['sessions','Sessions'],['trends','Trends'],['data','Data']];
+
+function chip(v, d, unit, goodUp, extra){
+  if (v == null || !isFinite(v)) return '';
+  var r = +(+v).toFixed(d);
+  var cls = r === 0 ? 'flat' : ((r > 0) === goodUp ? 'up' : 'down');
+  var ar = r === 0 ? '■' : (r > 0 ? '▲' : '▼');
+  return '<span class="chip '+cls+'">'+ar+' '+signed(v, d, unit)+(extra || '')+'</span>';
+}
+function emptyState(){
+  return '<div class="card empty"><svg viewBox="0 0 36 36" fill="none" aria-hidden="true"><circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="18" r="10" stroke="currentColor"/><circle cx="18" cy="18" r="4" stroke="currentColor"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/></svg>'
+    + '<h2>No sessions yet</h2><div class="muted small" style="max-width:34ch">Log a session shot by shot, or bring in your spreadsheet. Tens %, average and change since your last session appear here.</div>'
+    + '<div class="row" style="justify-content:center"><button class="btn primary" data-act="tab" data-v="log">Log a session</button><button class="btn" data-act="tab" data-v="data">Import spreadsheet</button></div></div>';
+}
+
+function dotPlot(rows, o){
+  o = o || {};
+  var vals = rows.filter(function(r){ return r.v != null; }).map(function(r){ return r.v; });
+  if (!vals.length) return '<div class="muted small">Not enough shots yet.</div>';
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  if (o.ref != null){ mn = Math.min(mn, o.ref); mx = Math.max(mx, o.ref); }
+  var lo = Math.floor((mn - 0.15)*2)/2, hi = Math.ceil((mx + 0.15)*2)/2;
+  if (hi - lo < 1){ hi = lo + 1; }
+  var x = function(v){ return ((v - lo)/(hi - lo)*100).toFixed(2) + '%'; };
+  var h = '<div class="dp" role="img" aria-label="'+esc(o.aria || 'Average score by row')+'">';
+  rows.forEach(function(r){
+    if (r.v == null) return;
+    h += '<div class="dp-row" title="'+esc(r.tip || '')+'"><span class="dp-l">'+esc(r.l)+'</span><div class="dp-t">'
+      + (o.ref != null ? '<i class="dp-ref" style="left:'+x(o.ref)+'"></i>' : '')
+      + '<b class="dp-dot" style="left:'+x(r.v)+'"></b></div><span class="dp-v">'+f2(r.v)+'</span></div>';
+  });
+  h += '<div class="dp-axis"><span></span><div><span>'+lo.toFixed(1)+'</span><span>'+((lo+hi)/2).toFixed(2)+'</span><span>'+hi.toFixed(1)+'</span></div><span></span></div></div>';
+  if (o.ref != null) h += '<div class="lab" style="margin-top:6px">Dashed line = '+esc(o.refLabel || 'average')+' '+f2(o.ref)+'</div>';
+  return h;
+}
+function bucketBars(buckets){
+  var h = '<div>';
+  buckets.forEach(function(b){
+    h += '<div class="br"><span class="l">'+esc(b.k)+'</span><div class="tr"><i style="width:'+b.pct.toFixed(1)+'%"></i></div><span class="v">'+b.pct.toFixed(1)+'% · '+b.c+'</span></div>';
+  });
+  return h + '</div>';
+}
+function compass(ds){
+  var order = ['↖','↑','↗','←','C','→','↙','↓','↘'];
+  var h = '<div class="cmp" role="group" aria-label="Where shots landed">';
+  order.forEach(function(d){
+    if (d === 'C'){ h += '<div class="cc mid"><span>logged</span><b>'+ds.total+'</b><span>shots</span></div>'; return; }
+    var s = ds.by[d];
+    h += '<div class="cc" title="'+s.c+' shots, average '+f2(s.avg)+'">'+arrow(d, 22)+'<b>'+(ds.total ? s.pct.toFixed(0) : 0)+'%</b><span>'+s.c+(s.avg != null ? ' · '+f2(s.avg) : '')+'</span><i style="width:'+Math.min(100, s.pct*2.2).toFixed(1)+'%"></i></div>';
+  });
+  return h + '</div>';
+}
+var chartData = {};
+function lineChart(id, pts, o){
+  chartData[id] = {pts:pts, o:o};
+  var W = 340, H = 200, L = 42, R = 14, Tp = 20, B = 36;
+  var vs = pts.map(function(p){ return p.v; });
+  var mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs), pd = (mx - mn) || Math.max(Math.abs(mx)*0.02, 0.1);
+  var sc = niceScale(mn - pd*0.25, mx + pd*0.35, 4);
+  var y = function(v){ return Tp + (1 - (v - sc.lo)/(sc.hi - sc.lo))*(H - Tp - B); };
+  var n = pts.length, x0 = L + 16, x1 = W - R - 16;
+  var x = function(i){ return n === 1 ? (L + W - R)/2 : x0 + i*(x1 - x0)/(n - 1); };
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.aria)+'">';
+  sc.ticks.forEach(function(t){ s += '<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t).toFixed(1)+'" y2="'+y(t).toFixed(1)+'"/><text x="'+(L-6)+'" y="'+(y(t)+3.5).toFixed(1)+'" text-anchor="end">'+o.fmt(t, true)+'</text>'; });
+  if (n > 1) s += '<polyline class="ln" points="'+pts.map(function(p,i){ return x(i).toFixed(1)+','+y(p.v).toFixed(1); }).join(' ')+'"/>';
+  var every = n <= 7 ? 1 : Math.ceil(n/7);
+  pts.forEach(function(p,i){
+    s += '<circle class="pt" cx="'+x(i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="5.5"/>';
+    if (n <= 8 || i === 0 || i === n - 1) s += '<text class="val" x="'+x(i).toFixed(1)+'" y="'+(y(p.v)-11).toFixed(1)+'" text-anchor="middle">'+o.fmt(p.v)+'</text>';
+    if (i % every === 0 || i === n - 1){
+      s += '<text x="'+x(i).toFixed(1)+'" y="'+(H-20)+'" text-anchor="middle">'+esc(p.l1)+'</text><text x="'+x(i).toFixed(1)+'" y="'+(H-7)+'" text-anchor="middle">'+esc(p.l2)+'</text>';
+    }
+  });
+  s += '<line class="cross" id="'+id+'-x" x1="0" x2="0" y1="'+Tp+'" y2="'+(H-B)+'" style="display:none"/></svg>';
+  chartData[id].geom = {W:W, xs:pts.map(function(_,i){ return x(i); })};
+  return '<div class="lc" data-chart="'+id+'">'+s+'<div class="tip" hidden></div></div>';
+}
+function bindCharts(){
+  Array.prototype.forEach.call(document.querySelectorAll('.lc'), function(el){
+    var cd = chartData[el.getAttribute('data-chart')]; if (!cd) return;
+    var tip = el.querySelector('.tip'), cross = el.querySelector('.cross'), svg = el.querySelector('svg');
+    var move = function(e){
+      var r = svg.getBoundingClientRect(); var px = (e.clientX - r.left)/r.width*cd.geom.W;
+      var bi = 0, bd = 1e9; cd.geom.xs.forEach(function(xx,i){ var d = Math.abs(xx - px); if (d < bd){ bd = d; bi = i; } });
+      var p = cd.pts[bi];
+      tip.hidden = false; tip.innerHTML = esc(p.tip);
+      var left = cd.geom.xs[bi]/cd.geom.W*r.width; var half = tip.offsetWidth/2;
+      tip.style.left = Math.max(half, Math.min(r.width - half, left)) + 'px';
+      cross.style.display = ''; cross.setAttribute('x1', cd.geom.xs[bi]); cross.setAttribute('x2', cd.geom.xs[bi]);
+    };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerdown', move);
+    el.addEventListener('pointerleave', function(){ tip.hidden = true; cross.style.display = 'none'; });
+  });
+}
+
+/* ----- Summary ----- */
+function insights(cur, c, list, idx){
+  var out = [];
+  if (c.under7 > 0 && c.n >= 10){
+    var rest = shotsOf(cur).filter(function(x){ return T(x.s) >= 70; });
+    var sumR = rest.reduce(function(a,x){ return a + T(x.s); }, 0)/10;
+    var avgR = sumR/rest.length;
+    out.push(c.under7 + (c.under7 === 1 ? ' shot' : ' shots') + ' under 7 pulled the average down. Without ' + (c.under7 === 1 ? 'it' : 'them') + ' it would be ' + f2(avgR) + ' instead of ' + f2(c.avg) + ' (' + signed((avgR - c.avg)/c.avg*100, 1, '%') + ').');
+  }
+  if (c.series.length >= 3){
+    var ser = c.series.filter(function(s){ return s.n >= 5; });
+    if (ser.length >= 2){
+      var best = ser.reduce(function(a,b){ return b.avg > a.avg ? b : a; }), worst = ser.reduce(function(a,b){ return b.avg < a.avg ? b : a; });
+      out.push('Best series was ' + best.no + ' (' + f2(best.avg) + ' average, ' + best.tens + ' tens). Weakest was ' + worst.no + ' (' + f2(worst.avg) + ').');
+    }
+  }
+  if (c.fade != null){
+    var d = c.fade;
+    out.push('First ' + c.half + ' shots averaged ' + f2(c.first) + ', the rest ' + f2(c.second) + ' (' + signed(d, 2) + '). ' + (d <= -0.1 ? 'Scores faded as the session went on.' : d >= 0.1 ? 'You finished stronger than you started.' : 'Steady from start to finish.'));
+  }
+  var ds = dirStats(list);
+  if (ds.total >= 30){
+    var low = ds.by['↙'].c + ds.by['↓'].c + ds.by['↘'].c, high = ds.by['↖'].c + ds.by['↑'].c + ds.by['↗'].c;
+    var left = ds.by['↖'].c + ds.by['←'].c + ds.by['↙'].c, right = ds.by['↗'].c + ds.by['→'].c + ds.by['↘'].c;
+    var topDir = DIRS.reduce(function(a,b){ return ds.by[b].c > ds.by[a].c ? b : a; });
+    out.push('Across all ' + ds.total + ' logged shots with a direction, ' + (100*low/ds.total).toFixed(0) + '% landed low (' + (100*high/ds.total).toFixed(0) + '% high) and ' + (100*right/ds.total).toFixed(0) + '% right (' + (100*left/ds.total).toFixed(0) + '% left). Most common: ' + topDir + ' at ' + ds.by[topDir].pct.toFixed(0) + '%.');
+  }
+  if (c.missing.length){
+    out.push('Shot' + (c.missing.length > 1 ? 's ' : ' ') + c.missing.join(', ') + ' not logged yet' + (c.screenDiff != null && c.screenDiff > 0 ? ', worth ' + f1(c.screenDiff) + ' points on the screen total' : '') + '. Stats use the ' + c.n + ' shots that are logged.');
+  }
+  return out;
+}
+function viewSummary(){
+  var list = sorted(); if (!list.length) return emptyState();
+  var idx = list.length - 1;
+  if (state.focusId){ var fi = list.findIndex(function(s){ return s.id === state.focusId; }); if (fi >= 0) idx = fi; }
+  var cur = list[idx], c = calc(cur, cfg());
+  var base = null, baseName = '';
+  if (state.cmp === 'all'){
+    var earlier = list.slice(0, idx);
+    if (earlier.length){ base = calc(pool(earlier), cfg()); baseName = 'all ' + earlier.length + ' earlier session' + (earlier.length > 1 ? 's' : ''); }
+  } else if (idx > 0){ base = calc(list[idx-1], cfg()); baseName = shortName(list[idx-1]); }
+  var d = compare(c, base);
+  var h = '';
+  h += '<div class="row between"><label class="f grow"><span class="lab">Session</span><select id="focus" data-field="focus">' + list.slice().reverse().map(function(s){ return '<option value="'+esc(s.id)+'"'+(s.id === cur.id ? ' selected' : '')+'>'+esc(nameOf(s))+'</option>'; }).join('') + '</select></label></div>';
+  h += '<section class="card stack"><div class="row between"><h2>' + esc(nameOf(cur)) + '</h2><span class="pill">' + c.n + ' shots logged</span></div>';
+  h += '<div class="tiles">'
+    + '<div class="tile"><div class="lab">Tens</div><div class="v">' + f1(c.tensPct) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '<div class="muted small" style="margin-top:4px">' + c.tensN + ' of ' + c.n + ' shots</div></div>'
+    + '<div class="tile"><div class="lab">Average</div><div class="v">' + f2(c.avg) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '<div class="muted small" style="margin-top:4px">per shot</div></div>'
+    + '<div class="tile"><div class="lab">60-shot pace</div><div class="v">' + (c.pace != null ? f1(c.pace) : '–') + '</div>' + (d ? chip(d.pace, 1, '', true) : '') + '<div class="muted small" style="margin-top:4px">average × 60</div></div>'
+    + '</div>';
+  if (c.missing.length) h += '<div class="note">' + c.missing.length + ' shot' + (c.missing.length > 1 ? 's are' : ' is') + ' missing from this session (' + c.missing.join(', ') + '). Numbers use the ' + c.n + ' logged shots' + (c.screenTotal != null ? '; the screen total is ' + f1(c.screenTotal) + ' against ' + f1(c.sum) + ' logged' : '') + '.</div>';
+  h += '</section>';
+
+  h += '<section class="card stack"><div class="row between"><h3>Change since' + (base ? '' : ' last session') + '</h3><div class="seg" style="min-width:210px"><button data-act="cmp" data-v="prev" aria-pressed="' + (state.cmp === 'prev') + '">Last session</button><button data-act="cmp" data-v="all" aria-pressed="' + (state.cmp === 'all') + '">All earlier</button></div></div>';
+  if (!base) h += '<div class="muted small">' + (idx === 0 ? 'This is your first logged session, so there is nothing to compare with yet.' : 'No earlier session to compare with.') + '</div>';
+  else if (!d) h += '<div class="muted small">Needs at least 10 logged shots in both sessions to compare fairly.</div>';
+  else {
+    h += '<div class="lab">vs ' + esc(baseName) + ' · ' + base.n + ' shots</div><div class="tw"><table><thead><tr><th>Metric</th><th>This</th><th>Before</th><th>Change</th></tr></thead><tbody>'
+      + row('Tens %', f1(c.tensPct) + '%', f1(base.tensPct) + '%', d.tensPts, 1, ' pts', true, d.tensRel != null ? ' (' + signed(d.tensRel, 0, '%') + ')' : '')
+      + row('Average / shot', f2(c.avg), f2(base.avg), d.avgPct, 1, '%', true)
+      + row('60-shot pace', f1(c.pace), f1(base.pace), d.pace, 1, '', true)
+      + row('Shots ' + f1(cfg().mark) + '+', f1(c.markPct) + '%', f1(base.markPct) + '%', d.markPts, 1, ' pts', true)
+      + row('Under 7', c.under7 + ' (' + (100*c.under7/c.n).toFixed(1) + '%)', base.under7 + ' (' + (100*base.under7/base.n).toFixed(1) + '%)', c.under7/c.n*100 - base.under7/base.n*100, 1, ' pts', false)
+      + row('Spread (SD)', f2(c.sd), f2(base.sd), d.sd, 2, '', false)
+      + '</tbody></table></div><div class="muted small">Percent change is the change in average score per shot, so sessions with different shot counts compare fairly. Tens change is in percentage points, with the relative change in brackets.</div>';
+  }
+  h += '</section>';
+
+  var ins = insights(cur, c, list, idx);
+  if (ins.length) h += '<section class="card stack"><h3>What stands out</h3><ul class="ins">' + ins.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section>';
+
+  h += '<section class="card stack"><h3>Series averages</h3>' + dotPlot(c.series.map(function(s){ return {l:'Series ' + s.no, v:s.n >= 3 ? s.avg : null, tip:s.n + ' shots, ' + f1(s.sum) + ' points'}; }), {ref:c.avg, aria:'Average score for each series'}) + '</section>';
+  return h;
+  function row(l, a, b, ch, dd, unit, goodUp, extra){
+    var r = +(+ch).toFixed(dd), cls = r === 0 ? '' : ((r > 0) === goodUp ? 'good' : 'bad');
+    return '<tr><td>' + l + '</td><td>' + a + '</td><td>' + b + '</td><td class="' + cls + '">' + (r === 0 ? '■ ' : r > 0 ? '▲ ' : '▼ ') + signed(ch, dd, unit) + (extra || '') + '</td></tr>';
+  }
+}
+
+/* ----- Sessions ----- */
+function viewSessions(){
+  if (state.openId){ var s = getSession(state.openId); if (s) return viewDetail(s); state.openId = null; }
+  var list = sorted(); if (!list.length) return emptyState();
+  var h = '<div class="lab">' + list.length + ' session' + (list.length > 1 ? 's' : '') + ' · newest first</div>';
+  list.slice().reverse().forEach(function(s){
+    var i = list.indexOf(s), c = calc(s, cfg()), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
+    h += '<button class="srow" data-act="open" data-id="' + esc(s.id) + '"><b>' + esc(nameOf(s)) + '</b><div class="st"><span>' + c.n + ' shots</span><span>' + f1(c.sum) + ' pts</span><span>' + f2(c.avg) + ' avg</span><span>' + f1(c.tensPct) + '% tens</span></div>'
+      + '<div class="go">' + (d ? chip(d.avgPct, 1, '%', true) : '<span class="pill">first</span>') + (c.missing.length ? '<span class="pill">' + c.missing.length + ' missing</span>' : '') + '</div></button>';
+  });
+  return h;
+}
+function viewDetail(s){
+  var c = calc(s, cfg()), list = sorted(), i = list.indexOf(s), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
+  var h = '<div class="row between"><button class="btn sm" data-act="back">← All sessions</button><button class="btn sm" data-act="resume" data-id="' + esc(s.id) + '">Add shots</button></div>';
+  h += '<section class="card stack"><div class="row between"><h2>' + esc(nameOf(s)) + '</h2><span class="pill">' + c.n + ' / ' + c.fired + ' shots</span></div>'
+    + '<div class="tiles"><div class="tile"><div class="lab">Tens</div><div class="v">' + f1(c.tensPct) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '</div>'
+    + '<div class="tile"><div class="lab">Average</div><div class="v">' + f2(c.avg) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '</div>'
+    + '<div class="tile"><div class="lab">Total</div><div class="v">' + f1(c.sum) + '</div><div class="muted small" style="margin-top:6px">' + (c.screenTotal != null ? 'screen ' + f1(c.screenTotal) : 'logged') + '</div></div></div>'
+    + '<dl class="kv"><dt>Spread (SD)</dt><dd>' + f2(c.sd) + '</dd><dt>Shots ' + f1(cfg().mark) + '+</dt><dd>' + c.markN + ' (' + f1(c.markPct) + '%)</dd><dt>Under 7</dt><dd>' + c.under7 + '</dd>' + (c.pace != null ? '<dt>60-shot pace</dt><dd>' + f1(c.pace) + '</dd>' : '') + '</dl>';
+  if (c.missing.length) h += '<div class="note">Missing shots: ' + c.missing.join(', ') + '. Tap a dashed cell to add one.</div>';
+  if (c.screenDiff != null && !c.missing.length && Math.abs(c.screenDiff) >= 0.05) h += '<div class="note">Screen total is ' + f1(c.screenTotal) + ' but the logged shots add up to ' + f1(c.sum) + ' (difference ' + signed(c.screenDiff, 1) + '). One of the shots may be wrong.</div>';
+  if (s.note) h += '<div class="small ink2">' + esc(s.note) + '</div>';
+  h += '</section>';
+
+  h += '<section class="card stack"><h3>Every shot</h3><div class="grid">';
+  var by = {}; shotsOf(s).forEach(function(x){ by[x.n] = x; });
+  for (var n = 1; n <= c.fired; n++){
+    var x = by[n];
+    if (x) h += '<button class="cell t' + tier(x.s) + '" data-act="edit" data-n="' + n + '" aria-label="Shot ' + n + ', ' + f1(x.s) + '"><span class="no">' + n + '</span>' + f1(x.s) + arrow(x.d, 12) + '</button>';
+    else h += '<button class="cell gap" data-act="edit" data-n="' + n + '" aria-label="Shot ' + n + ' not logged"><span class="no">' + n + '</span>+</button>';
+  }
+  h += '</div><div class="legend"><span><i style="background:var(--h5)"></i>10s</span><span><i style="background:var(--h4)"></i>9s</span><span><i style="background:var(--h3)"></i>8s</span><span><i style="background:var(--h2)"></i>7s</span><span><i style="background:var(--h1)"></i>under 7</span></div></section>';
+
+  h += '<section class="card stack"><h3>By series</h3><div class="tw"><table><thead><tr><th>Series</th><th>Shots</th><th>Total</th><th>Avg</th><th>Tens</th><th>Start</th></tr></thead><tbody>'
+    + c.series.map(function(r){ return '<tr><td>' + r.no + '</td><td>' + r.n + '</td><td>' + f1(r.sum) + '</td><td>' + f2(r.avg) + '</td><td>' + r.tens + '</td><td>' + esc(r.time || '–') + '</td></tr>'; }).join('')
+    + '</tbody></table></div>' + dotPlot(c.series.map(function(r){ return {l:'Series ' + r.no, v:r.n >= 3 ? r.avg : null, tip:r.n + ' shots'}; }), {ref:c.avg, aria:'Series averages'}) + '</section>';
+  h += '<section class="card stack"><h3>Score spread</h3>' + bucketBars(c.buckets) + '</section>';
+  h += '<section class="card stack"><h3>Where shots landed</h3>' + compass(dirStats([s])) + '<div class="muted small">Share of shots by direction, then shot count and average score in that direction.</div></section>';
+
+  h += '<section class="card stack"><details><summary>Session details</summary><div class="stack" style="margin-top:10px">'
+    + '<div class="row"><label class="f grow"><span class="lab">Date</span><input type="date" id="d-date" data-field="s-date" value="' + esc(s.date) + '"></label>'
+    + '<label class="f grow"><span class="lab">Session</span><select id="d-label" data-field="s-label">' + labelOptions(s.label) + '</select></label></div>'
+    + '<div class="row"><label class="f grow"><span class="lab">Shots fired</span><input type="number" inputmode="numeric" id="d-fired" data-field="s-fired" min="1" max="200" value="' + c.fired + '"></label>'
+    + '<label class="f grow"><span class="lab">Screen total</span><input type="number" inputmode="decimal" step="0.1" id="d-screen" data-field="s-screen" value="' + (s.screenTotal == null ? '' : s.screenTotal) + '" placeholder="optional"></label></div>'
+    + '<label class="f"><span class="lab">Note</span><textarea id="d-note" data-field="s-note" placeholder="Sleep, conditions, what you changed…">' + esc(s.note || '') + '</textarea></label>'
+    + (state.confirm === 'del-' + s.id ? '<button class="btn danger block" data-act="del-session" data-id="' + esc(s.id) + '">Tap again to delete this session</button>' : '<button class="btn danger block" data-act="ask-del" data-id="' + esc(s.id) + '">Delete session</button>')
+    + '</div></details></section>';
+  return h;
+}
+function labelOptions(cur){
+  var opts = LABELS.slice(); if (opts.indexOf(cur) < 0) opts.unshift(cur);
+  return opts.map(function(l){ return '<option' + (l === cur ? ' selected' : '') + '>' + esc(l) + '</option>'; }).join('');
+}
+
+/* ----- Trends ----- */
+var METRICS = {
+  avg:{name:'Average per shot', get:function(c){ return c.avg; }, fmt:function(v, ax){ return v.toFixed(2); }},
+  tens:{name:'Tens %', get:function(c){ return c.tensPct; }, fmt:function(v, ax){ return v.toFixed(ax ? 0 : 1) + '%'; }},
+  pace:{name:'60-shot pace', get:function(c){ return c.pace; }, fmt:function(v, ax){ return v.toFixed(ax ? 0 : 1); }},
+  sd:{name:'Spread (SD, lower is tighter)', get:function(c){ return c.sd; }, fmt:function(v, ax){ return v.toFixed(2); }}
+};
+function viewTrends(){
+  var list = sorted().filter(function(s){ return calc(s, cfg()).n >= 10; });
+  var all = sorted(); if (!all.length) return emptyState();
+  var m = METRICS[state.metric], h = '';
+  h += '<section class="card stack"><div class="seg" role="group" aria-label="Metric">' + Object.keys(METRICS).map(function(k){ return '<button data-act="metric" data-v="' + k + '" aria-pressed="' + (state.metric === k) + '">' + ({avg:'Average',tens:'Tens %',pace:'Pace',sd:'Spread'})[k] + '</button>'; }).join('') + '</div>'
+    + '<div class="row between"><h2 style="font-size:17px">' + esc(m.name) + '</h2><span class="lab">' + list.length + ' sessions</span></div>';
+  if (!list.length) h += '<div class="muted small">Sessions need at least 10 logged shots to show here.</div>';
+  else {
+    var pts = list.map(function(s, i){
+      var c = calc(s, cfg()), v = m.get(c), p = i > 0 ? m.get(calc(list[i-1], cfg())) : null;
+      return {v:v, l1:shortDate(s.date), l2:s.label.slice(0, 4), tip:nameOf(s) + ' · ' + m.fmt(v) + ' · ' + c.n + ' shots' + (p != null && state.metric !== 'tens' ? ' · ' + signed(v - p, 2) + ' vs before' : p != null ? ' · ' + signed(v - p, 1, ' pts') + ' vs before' : '')};
+    }).filter(function(p){ return p.v != null; });
+    h += lineChart('trend', pts, {fmt:m.fmt, aria:m.name + ' by session'});
+    h += '<div class="tw"><table><thead><tr><th>Session</th><th>Shots</th><th>Avg</th><th>Tens</th><th>Pace</th><th>SD</th></tr></thead><tbody>'
+      + list.slice().reverse().map(function(s){ var c = calc(s, cfg()); return '<tr><td>' + esc(shortName(s)) + '</td><td>' + c.n + '</td><td>' + f2(c.avg) + '</td><td>' + f1(c.tensPct) + '%</td><td>' + f1(c.pace) + '</td><td>' + f2(c.sd) + '</td></tr>'; }).join('')
+      + '</tbody></table></div>';
+  }
+  h += '</section>';
+  var pl = calc(pool(all), cfg());
+  h += '<section class="card stack"><h3>All shots together</h3><div class="tiles"><div class="tile"><div class="lab">Shots</div><div class="v">' + pl.n + '</div></div><div class="tile"><div class="lab">Tens</div><div class="v">' + f1(pl.tensPct) + '<small>%</small></div></div><div class="tile"><div class="lab">Average</div><div class="v">' + f2(pl.avg) + '</div></div></div>' + bucketBars(pl.buckets) + '</section>';
+  var bs = bySeriesNo(all);
+  if (bs.length > 1) h += '<section class="card stack"><h3>Which series are strongest</h3>' + dotPlot(bs.map(function(r){ return {l:'Series ' + r.no, v:r.n >= 5 ? r.avg : null, tip:r.n + ' shots'}; }), {ref:pl.avg, refLabel:'overall average', aria:'Average by series number'}) + '<div class="muted small">Average of every shot taken in that series number, across all sessions.</div></section>';
+  var bp = byPosition(all);
+  h += '<section class="card stack"><h3>Shot 1 to 10 within a series</h3>' + dotPlot(bp.map(function(r){ return {l:'Shot ' + r.pos, v:r.n >= 5 ? r.avg : null, tip:r.n + ' shots'}; }), {ref:pl.avg, refLabel:'overall average', aria:'Average by shot position in series'}) + '<div class="muted small">Shows whether the early or late shots of a series are weaker.</div></section>';
+  h += '<section class="card stack"><h3>Where shots land</h3>' + compass(dirStats(all)) + '<div class="muted small">Share of shots by direction, with shot count and average score. Shots without a direction are left out.</div></section>';
+  return h;
+}
+
+/* ----- Log ----- */
+function labelChips(cur){ return LABELS.map(function(l){ return '<button data-act="llabel" data-v="' + l + '" aria-pressed="' + (cur === l) + '">' + l + '</button>'; }).join(''); }
+function pads(P){
+  var h = '<div class="pads"><div><div class="lab" style="margin-bottom:6px">Score · whole number</div><div class="pw">';
+  [4,5,6,7,8,9,10].forEach(function(w){ h += '<button class="pk" data-act="whole" data-v="' + w + '" aria-pressed="' + (P.whole === w) + '">' + w + '</button>'; });
+  h += '</div></div><div><div class="lab" style="margin-bottom:6px">Decimal</div><div class="pd">';
+  for (var k = 0; k <= 9; k++) h += '<button class="pk" data-act="dec" data-v="' + k + '" aria-pressed="' + (P.dec === k) + '">.' + k + '</button>';
+  h += '</div></div><div><div class="lab" style="margin-bottom:6px">Where it landed (optional)</div><div class="pdir">';
+  ['↖','↑','↗','←','C','→','↙','↓','↘'].forEach(function(d){
+    if (d === 'C') h += '<button class="pk" data-act="dir" data-v="" aria-pressed="' + (P.dir === '') + '" aria-label="No direction">none</button>';
+    else h += '<button class="pk" data-act="dir" data-v="' + d + '" aria-pressed="' + (P.dir === d) + '" aria-label="' + d + '">' + arrow(d, 20) + '</button>';
+  });
+  return h + '</div></div></div>';
+}
+function readout(P){ return (P.whole == null ? '–' : P.whole) + '.' + (P.dec == null ? '–' : P.dec); }
+function nextMissing(s, from){
+  var have = {}; shotsOf(s).forEach(function(x){ have[x.n] = 1; });
+  var n = from || 1; while (have[n]) n++; return n;
+}
+function scanCard(){
+  var b = state.scanBusy;
+  return '<section class="card stack"><label class="btn primary block" for="scan"' + (b ? ' aria-disabled="true"' : '') + '>' + (b ? 'Reading photo…' : 'Scan scoreboard') + '</label>'
+    + '<input id="scan" type="file" accept="image/*" capture="environment" hidden' + (b ? ' disabled' : '') + '>'
+    + '<div class="muted small">One photo per series. You check every shot before it is saved.</div></section>';
+}
+function scanTarget(S){ return getSession(makeId(S.date, S.separate ? 'Other' : S.label)); }
+function viewScan(){
+  var S = state.scan, target = scanTarget(S), main = getSession(makeId(S.date, S.label));
+  var hit = {}; scanConflicts(target, S.shots).forEach(function(n){ hit[n] = 1; });
+  var chk = scanCheck(S.shots, S.subtotal), canSave = S.date && S.shots.length && (!S.sighter || S.override);
+  var base = target || {id:'', date:S.date, label:S.label, fired:cfg().planned, shots:[], seriesTimes:{}};
+  var miss = calc(mergeShots(base, S.shots, S.time), cfg()).missing;
+  var h = '<section class="card stack"><div><div class="lab">Scanned scoreboard</div><h2>Check the reading</h2></div>'
+    + '<div class="row"><label class="f grow"><span class="lab">Date on screen</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
+    + '<label class="f grow"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
+    + (S.dateRead ? '' : '<div class="note">The date on the screen was not readable. Check it before saving.</div>');
+  h += '<div class="grid">' + S.shots.map(function(x){
+    return '<button class="cell t' + tier(x.s) + (hit[x.n] ? ' conflict' : '') + '" data-act="scan-edit" data-n="' + x.n + '" aria-label="Shot ' + x.n + ', ' + f1(x.s) + (x.d ? ', ' + x.d : ', no direction') + '"><span class="no">' + x.n + '</span>' + f1(x.s) + (x.d ? arrow(x.d, 16) : '<span class="arw">–</span>') + '</button>';
+  }).join('') + '</div><div class="muted small">Tap a shot to fix its score or arrow.</div>';
+  h += chk.ok === true ? '<div class="check ok">✓ Matches screen subtotal ' + f1(chk.subtotal) + '</div>'
+    : chk.ok === false ? '<div class="note">Shots add up to ' + f1(chk.sum) + ', screen says ' + f1(chk.subtotal) + '. Check before saving.</div>'
+    : '<div class="check muted">No subtotal on screen to check</div>';
+  if (scanConflicts(main, S.shots).length) h += '<div class="note">Some of these shots are already saved in ' + esc(nameOf(main)) + ' with different values (outlined).</div>'
+    + '<div class="seg" role="group" aria-label="Saved shots"><button data-act="scan-sep" data-v="0" aria-pressed="' + !S.separate + '">Replace saved shots</button><button data-act="scan-sep" data-v="1" aria-pressed="' + !!S.separate + '">Save as separate session (Other)</button></div>';
+  if (S.sighter) h += '<div class="note">This looks like a sighter screen, not match shots.</div><label class="row small"><input type="checkbox" data-field="scan-override"' + (S.override ? ' checked' : '') + '> Save these as match shots anyway</label>';
+  if (miss.length) h += '<div class="muted small">Not logged yet in this session: shots ' + shotRanges(miss) + '.</div>';
+  h += '<div class="muted small">Photos are read by Google Gemini\'s free tier. Google may use them to improve its products. raptOR doesn\'t keep your photos.</div>'
+    + '<div class="row"><button class="btn primary grow" data-act="scan-save"' + (canSave ? '' : ' disabled') + '>Save ' + S.shots.length + ' shot' + (S.shots.length === 1 ? '' : 's') + '</button><button class="btn" data-act="scan-discard">Discard</button></div></section>';
+  return h;
+}
+function viewLog(){
+  if (state.scan) return viewScan();
+  var L = state.log, s = L.active ? getSession(L.active) : null;
+  if (!s){
+    var exists = getSession(makeId(L.date, L.label));
+    return scanCard() + '<section class="card stack"><h2>Log a session</h2>'
+      + '<label class="f"><span class="lab">Date</span><input type="date" id="l-date" data-field="l-date" value="' + esc(L.date) + '"></label>'
+      + '<div><div class="lab" style="margin-bottom:6px">Session</div><div class="seg">' + labelChips(L.label) + '</div></div>'
+      + '<div><div class="lab" style="margin-bottom:6px">Shots you plan to fire</div><div class="chips">' + [10,20,30,40,60].map(function(n){ return '<button class="btn sm" data-act="lfired" data-v="' + n + '" aria-pressed="' + (L.fired === n) + '" style="' + (L.fired === n ? 'background:var(--accent);color:var(--accent-ink);border-color:var(--accent)' : '') + '">' + n + '</button>'; }).join('') + '</div></div>'
+      + (exists ? '<div class="note">You already have a ' + esc(L.label.toLowerCase()) + ' session on ' + esc(fmtDate(L.date)) + ' with ' + calc(exists, cfg()).n + ' shots. Starting continues it from the first missing shot.</div>' : '')
+      + '<button class="btn primary block" data-act="start">' + (exists ? 'Continue session' : 'Start logging') + '</button></section>';
+  }
+  var c = calc(s, cfg()), n = L.n, sn = seriesNo(n), inSer = ((n - 1) % 10) + 1;
+  var last = shotsOf(s).slice(-10);
+  var h = scanCard() + '<section class="card stack"><div class="row between"><div><div class="lab">' + esc(nameOf(s)) + '</div><h2>Shot ' + n + ' <span class="muted" style="font-weight:400;font-size:15px">· series ' + sn + ', ' + inSer + ' of 10</span></h2></div><button class="btn sm" data-act="change">Change</button></div>'
+    + '<div class="row between" style="align-items:flex-end"><div class="read mono" aria-live="polite">' + readout(L) + '</div><div class="muted small" style="text-align:right">Total ' + f1(c.sum) + '<br>Avg ' + f2(c.avg) + ' · Tens ' + f1(c.tensPct) + '%</div></div>'
+    + pads(L)
+    + '<div class="row"><button class="btn primary grow" data-act="add"' + (L.whole == null || L.dec == null ? ' disabled' : '') + '>Add shot ' + n + '</button><button class="btn" data-act="undo"' + (L.stack.length ? '' : ' disabled') + '>Undo</button><button class="btn" data-act="skip" title="Leave this shot number empty">Skip</button></div></section>';
+  if (last.length) h += '<section class="card stack"><div class="lab">Last ' + last.length + ' shots</div><div class="last">' + last.map(function(x){ return '<span class="t' + tier(x.s) + '">' + f1(x.s) + '</span>'; }).join('') + '</div></section>';
+  h += '<section class="card stack"><details><summary>Type or paste scores</summary><div class="stack" style="margin-top:10px"><textarea id="paste" placeholder="9.2 10.5 10.8 8.4 …" aria-label="Scores separated by spaces or commas"></textarea><button class="btn" data-act="paste">Add these scores</button><div class="muted small">Each score is added as the next shot, without a direction.</div></div></details></section>';
+  h += '<section class="card stack"><details><summary>Finish session</summary><div class="stack" style="margin-top:10px"><label class="f"><span class="lab">Screen total (optional)</span><input type="number" inputmode="decimal" step="0.1" id="f-screen" value="' + (s.screenTotal == null ? '' : s.screenTotal) + '"></label><label class="f"><span class="lab">Note (optional)</span><textarea id="f-note">' + esc(s.note || '') + '</textarea></label><button class="btn primary block" data-act="finish">Save and view session</button></div></details></section>';
+  return h;
+}
+
+/* ----- Account ----- */
+function viewAuth(){
+  var A = state.auth, msg = A.msg ? '<div class="note">' + esc(A.msg) + '</div>' : '';
+  if (A.mode === 'recover') return '<section class="card stack"><h2>Choose a new password</h2>'
+    + '<form class="stack" data-submit="a-newpass"><label class="f"><span class="lab">New password</span><input type="password" id="a-pass" autocomplete="new-password" minlength="6" required></label>'
+    + '<button class="btn primary block"' + (A.busy ? ' disabled' : '') + '>Save password</button></form>' + msg + '</section>';
+  var up = A.mode === 'signup';
+  return '<section class="card stack"><h2>' + (up ? 'Create your account' : 'Sign in') + '</h2>'
+    + '<div class="small ink2">Your sessions are kept in your own account, so today\'s shots are compared with every session before.</div>'
+    + '<form class="stack" data-submit="a-submit"><label class="f"><span class="lab">Email</span><input type="email" id="a-email" autocomplete="email" required value="' + esc(A.email) + '"></label>'
+    + '<label class="f"><span class="lab">Password</span><input type="password" id="a-pass" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="6" required></label>'
+    + '<button class="btn primary block"' + (A.busy ? ' disabled' : '') + '>' + (up ? 'Create account' : 'Sign in') + '</button></form>' + msg
+    + '<div class="row between"><button class="btn link" data-act="a-mode">' + (up ? 'I already have an account' : 'Create an account') + '</button>'
+    + (up ? '' : '<button class="btn link" data-act="a-forgot">Forgot password</button>') + '</div></section>';
+}
+
+/* ----- Data ----- */
+function viewData(){
+  var h = '';
+  var st = {cloud:'Every session is saved to your account, so it is there on any device you sign in on.', saving:'Uploading your latest changes…', connecting:'Connecting to your account…', slow:'You look offline. Changes are kept on this device and upload when you are back online.'}[state.sync] || '';
+  h += '<section class="card stack"><h2>Account</h2><div class="small ink2">Signed in as <b>' + esc(state.user.email) + '</b>. ' + st + '</div>'
+    + '<button class="btn" data-act="signout">Sign out</button>'
+    + (state.stray.length ? '<div class="note">' + state.stray.length + ' session' + (state.stray.length > 1 ? 's were' : ' was') + ' saved on this device before. <button class="btn link" data-act="move-stray">Move to your account</button></div>' : '') + '</section>';
+  h += '<section class="card stack"><h2>Import</h2><div class="small ink2">Excel, CSV or a raptOR backup. Your current layout works as it is: one row per shot with Date, Session, Shot no., Score and Direction, and a SESSION TOTAL row for the screen total. Sighters are skipped.</div>'
+    + '<label class="btn primary block" for="file">Choose file</label><input id="file" type="file" accept=".xlsx,.xls,.csv,.json" hidden>';
+  if (state.preview){
+    var p = state.preview;
+    h += '<div class="card stack" style="background:var(--soft)"><div class="lab">Found in ' + esc(p.name) + '</div>' + (p.sessions.length ? '<ul class="ins">' + p.sessions.map(function(s){ var c = calc(s, cfg()); return '<li>' + esc(nameOf(s)) + ': ' + c.n + ' shots, ' + f1(c.sum) + ' points' + (c.missing.length ? ', ' + c.missing.length + ' missing' : '') + (getSession(s.id) ? ' (replaces the one you have)' : '') + '</li>'; }).join('') + '</ul>' : '<div class="small">No shots found. Check that the sheet has Score and Shot no. columns.</div>')
+      + (p.skipped ? '<div class="muted small">' + p.skipped + ' non-match row' + (p.skipped > 1 ? 's' : '') + ' skipped.</div>' : '')
+      + '<div class="row"><button class="btn primary grow" data-act="do-import"' + (p.sessions.length ? '' : ' disabled') + '>Add ' + p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + '</button><button class="btn" data-act="cancel-import">Cancel</button></div></div>';
+  }
+  h += '</section>';
+  h += '<section class="card stack"><h2>Export</h2><div class="row"><button class="btn grow" data-act="x-xlsx">Excel (.xlsx)</button><button class="btn grow" data-act="x-csv">CSV</button><button class="btn grow" data-act="x-json">Backup</button></div>';
+  h += '</section>';
+  h += '<section class="card stack"><h2>Settings</h2><div class="row"><label class="f grow"><span class="lab">Count as a ten from</span><input type="number" step="0.1" inputmode="decimal" id="c-tens" data-field="c-tens" value="' + cfg().tens + '"></label>'
+    + '<label class="f grow"><span class="lab">Marked shots from</span><input type="number" step="0.1" inputmode="decimal" id="c-mark" data-field="c-mark" value="' + cfg().mark + '"></label>'
+    + '<label class="f grow"><span class="lab">Match length</span><input type="number" inputmode="numeric" id="c-plan" data-field="c-plan" value="' + cfg().planned + '"></label></div>'
+    + '<div class="muted small">Your sheet marks shots of 10.2 and above on the screen, so that is the default for marked shots. A ten is 10.0 and above.</div></section>';
+  h += '<section class="card stack"><h2>How the numbers work</h2><ul class="ins small">'
+    + '<li><b>Tens %</b> is logged shots at or above ' + f1(cfg().tens) + ' divided by logged shots.</li>'
+    + '<li><b>Change vs last session</b> compares average score per shot, so a 20-shot and a 60-shot session are fair to compare. Tens change is in percentage points.</li>'
+    + '<li><b>60-shot pace</b> is your average per shot × 60. It needs at least 10 logged shots.</li>'
+    + '<li><b>Spread (SD)</b> is how far shots scatter from your average. Lower means tighter.</li>'
+    + '<li>Missing shots are never guessed. They are listed on the session so you can add them.</li></ul></section>';
+  h += '<section class="card stack"><h2>Clear everything</h2>' + (state.confirm === 'wipe' ? '<button class="btn danger block" data-act="wipe">Tap again to delete all ' + state.sessions.length + ' sessions</button>' : '<button class="btn danger block" data-act="ask-wipe"' + (state.sessions.length ? '' : ' disabled') + '>Delete all sessions</button>') + '<div class="muted small">Export a backup first.</div></section>';
+  return h;
+}
+
+/* ---------- import / export ---------- */
+function toISO(v){
+  if (v == null || v === '') return '';
+  if (v instanceof Date) return v.getFullYear() + '-' + pad2(v.getMonth()+1) + '-' + pad2(v.getDate());
+  if (typeof v === 'number' && v > 20000 && v < 80000){ var o = XLSX.SSF.parse_date_code(v); return o.y + '-' + pad2(o.m) + '-' + pad2(o.d); }
+  var s = String(v).trim(), m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1] + '-' + pad2(+m[2]) + '-' + pad2(+m[3]);
+  if ((m = s.match(/^(\d{1,2})[-\s\/]([A-Za-z]{3})[A-Za-z]*[-\s\/](\d{4})$/))){ var mi = MONTHS.map(function(x){ return x.toLowerCase(); }).indexOf(m[2].toLowerCase()); if (mi >= 0) return m[3] + '-' + pad2(mi+1) + '-' + pad2(+m[1]); }
+  if ((m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/))) return m[3] + '-' + pad2(+m[2]) + '-' + pad2(+m[1]);
+  return '';
+}
+function toHM(v){
+  if (v == null || v === '') return '';
+  if (v instanceof Date) return pad2(v.getHours()) + ':' + pad2(v.getMinutes());
+  if (typeof v === 'number' && v >= 0 && v < 1){ var mins = Math.round(v*1440); return pad2(Math.floor(mins/60)) + ':' + pad2(mins%60); }
+  var m = String(v).trim().match(/^(\d{1,2}):(\d{2})/); return m ? pad2(+m[1]) + ':' + m[2] : '';
+}
+function normDir(v){
+  var s = String(v == null ? '' : v).trim();
+  if (DIRS.indexOf(s) >= 0) return s;
+  var map = {N:'↑',NE:'↗',E:'→',SE:'↘',S:'↓',SW:'↙',W:'←',NW:'↖'};
+  return map[s.toUpperCase()] || '';
+}
+function normH(h){ return String(h == null ? '' : h).trim().toLowerCase(); }
+function parseRows(rows, sheetName, out, tally){
+  var hi = -1;
+  for (var i = 0; i < Math.min(rows.length, 10); i++){
+    var r = (rows[i] || []).map(normH);
+    if (r.indexOf('score') >= 0 && (r.indexOf('shot no.') >= 0 || r.indexOf('shot no') >= 0 || r.indexOf('shot') >= 0 || r.indexOf('#') >= 0)){ hi = i; break; }
+  }
+  if (hi < 0) return;
+  var H = rows[hi].map(normH);
+  var col = function(names){ for (var j = 0; j < names.length; j++){ var k = H.indexOf(names[j]); if (k >= 0) return k; } return -1; };
+  var cD = col(['date']), cS = col(['session']), cN = col(['shot no.','shot no','shot','#']), cT = col(['type']), cSc = col(['score']), cDir = col(['direction','dir']), cTm = col(['screen time','time']);
+  var sheetDate = toISO(sheetName);
+  for (var k = hi + 1; k < rows.length; k++){
+    var r2 = rows[k] || [];
+    var date = toISO(cD >= 0 ? r2[cD] : '') || sheetDate; if (!date) continue;
+    var label = cS >= 0 && r2[cS] ? String(r2[cS]).trim() : 'Session';
+    var id = makeId(date, label);
+    var type = cT >= 0 && r2[cT] != null ? String(r2[cT]).trim() : '';
+    var get = function(){ return out[id] || (out[id] = {id:id, date:date, label:label, shots:[], seriesTimes:{}, fired:0, screenTotal:null, note:'', createdAt:Date.now()}); };
+    if (/session total/i.test(type)){
+      var total = cSc >= 0 ? r2[cSc] : null, sess = get();
+      if (typeof total === 'number') sess.screenTotal = r1(total);
+      r2.forEach(function(cell){
+        if (typeof cell !== 'string') return;
+        var m = cell.match(/shots?\s*\d+\s*[-–]\s*(\d+)/i); if (m) sess.fired = Math.max(sess.fired, +m[1]);
+        var p = cell.match(/\(([^)]+)\)/); if (p && !sess.note) sess.note = p[1];
+      });
+      continue;
+    }
+    var n = cN >= 0 ? r2[cN] : null, sc = cSc >= 0 ? r2[cSc] : null;
+    if (typeof n !== 'number' || typeof sc !== 'number') continue;
+    if (type && !/match/i.test(type)){ tally.skipped++; continue; }
+    var s = get();
+    s.shots.push({n:n, s:r1(sc), d:cDir >= 0 ? normDir(r2[cDir]) : ''});
+    var sn = seriesNo(n), tm = cTm >= 0 ? toHM(r2[cTm]) : '';
+    if (tm && !s.seriesTimes[sn]) s.seriesTimes[sn] = tm;
+  }
+}
+async function readFile(file){
+  var name = file.name, tally = {skipped:0}, out = {};
+  if (/\.json$/i.test(name)){
+    var j = JSON.parse(await file.text()); var arr = Array.isArray(j) ? j : (j.sessions || []);
+    arr.forEach(function(s){ if (s && s.date && Array.isArray(s.shots)){ s.id = s.id || makeId(s.date, s.label); s.label = s.label || 'Session'; s.seriesTimes = s.seriesTimes || {}; out[s.id] = s; } });
+  } else {
+    var wb = XLSX.read(await file.arrayBuffer(), {type:'array'});
+    wb.SheetNames.forEach(function(sn){ parseRows(XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:true, defval:null}), sn, out, tally); });
+  }
+  var sessions = Object.keys(out).map(function(k){
+    var s = out[k]; var seen = {}; s.shots = s.shots.filter(function(x){ if (seen[x.n]) return false; seen[x.n] = 1; return true; }).sort(function(a,b){ return a.n - b.n; });
+    s.fired = Math.max(s.fired || 0, s.shots.length ? s.shots[s.shots.length-1].n : 0);
+    return s;
+  }).filter(function(s){ return s.shots.length; });
+  return {name:name, sessions:sortSessions(sessions), skipped:tally.skipped};
+}
+function shotRows(){
+  var rows = [['Date','Session','Shot no.','Series','Type','Score','Direction','Screen mark','Screen time','Note']];
+  sorted().forEach(function(s){
+    var c = calc(s, cfg());
+    shotsOf(s).forEach(function(x){ var sn = seriesNo(x.n); rows.push([s.date, s.label, x.n, sn, 'Match', x.s, x.d || '', T(x.s) >= T(cfg().mark), (s.seriesTimes && s.seriesTimes[sn]) || '', '']); });
+    rows.push([s.date, s.label, '', '', 'SESSION TOTAL', s.screenTotal != null ? s.screenTotal : c.sum, '', '', '', 'Screen total, shots 1-' + c.fired + (s.note ? ' (' + s.note + ')' : '')]);
+  });
+  return rows;
+}
+function toCSV(rows){
+  return rows.map(function(r){ return r.map(function(v){ var t = String(v == null ? '' : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(','); }).join('\n');
+}
+function offerFile(filename, data){
+  var url = URL.createObjectURL(new Blob([data])), a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('Saved ' + filename);
+}
+
+/* ---------- scan ---------- */
+var SCAN_ERR = {daily_limit:'Daily scan limit reached (60)', busy:'Gemini is busy, try again in a minute', unreadable:'Couldn\'t read that photo. Try again closer and straighter', bad_request:'That photo could not be sent. Try another.'};
+function shrink(file){
+  return createImageBitmap(file, {imageOrientation:'from-image'}).then(function(img){
+    var k = Math.min(1, 1600/Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return new Promise(function(res, rej){ c.toBlob(function(b){ b ? res(b) : rej(new Error('encode')); }, 'image/jpeg', 0.8); });
+  });
+}
+function toB64(blob){
+  return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(String(r.result).split(',')[1]); }; r.onerror = rej; r.readAsDataURL(blob); });
+}
+async function startScan(file){
+  state.scanBusy = true; render();
+  try {
+    var image = await toB64(await shrink(file));
+    var r = await sb.functions.invoke('read-scoreboard', {body:{image:image, mime:'image/jpeg'}});
+    if (r.error){
+      var code = ''; try { code = (await r.error.context.json()).error; } catch(e){}
+      toast(SCAN_ERR[code] || (navigator.onLine ? 'Could not read that photo. Try again.' : 'Scanning needs a connection.'));
+      return;
+    }
+    var d = r.data, act = state.log.active && getSession(state.log.active), date = d.date || todayISO();
+    state.scan = {date:date, dateRead:!!d.date, time:d.time, label:act && act.date === date ? act.label : labelFromTime(d.time),
+      subtotal:d.subtotal, sighter:!!d.sighter, shots:d.shots, separate:false, override:false};
+    window.scrollTo(0, 0);
+  } catch(e){ console.error(e); toast('Could not read that photo. Try again.'); }
+  finally { state.scanBusy = false; render(); }
+}
+function saveScan(){
+  var S = state.scan, label = S.separate ? 'Other' : S.label, id = makeId(S.date, label);
+  var t = getSession(id) || {id:id, date:S.date, label:label, fired:cfg().planned, shots:[], seriesTimes:{}, screenTotal:null, note:'', createdAt:Date.now()};
+  var m = mergeShots(t, S.shots, S.time); persist(m);
+  var L = state.log; L.active = id; L.n = nextMissing(m, 1); L.whole = L.dec = null; L.dir = ''; L.stack = [];
+  state.scan = null; toast(S.shots.length + ' shot' + (S.shots.length === 1 ? '' : 's') + ' saved to ' + nameOf(m));
+}
+
+/* ---------- actions ---------- */
+function startLog(){
+  var L = state.log, id = makeId(L.date, L.label), s = getSession(id);
+  if (!s){ s = {id:id, date:L.date, label:L.label, fired:L.fired, shots:[], seriesTimes:{}, screenTotal:null, note:'', createdAt:Date.now()}; persist(s); }
+  L.active = id; L.n = nextMissing(s, 1); L.whole = L.dec = null; L.dir = ''; L.stack = [];
+}
+function addShot(){
+  var L = state.log, s = getSession(L.active); if (!s || L.whole == null || L.dec == null) return;
+  var sc = (L.whole*10 + L.dec)/10; if (sc > 10.9){ toast('The highest score is 10.9'); return; }
+  s.shots = (s.shots || []).filter(function(x){ return x.n !== L.n; });
+  s.shots.push({n:L.n, s:sc, d:L.dir || ''});
+  s.seriesTimes = s.seriesTimes || {}; var sn = seriesNo(L.n); if (!s.seriesTimes[sn]) s.seriesTimes[sn] = nowHM();
+  if (L.n > (s.fired || 0)) s.fired = L.n;
+  L.stack.push(L.n); persist(s);
+  L.n = nextMissing(s, L.n + 1); L.whole = L.dec = null; L.dir = '';
+}
+function undoShot(){
+  var L = state.log, s = getSession(L.active); if (!s || !L.stack.length) return;
+  var n = L.stack.pop(); s.shots = s.shots.filter(function(x){ return x.n !== n; }); persist(s); L.n = n; L.whole = L.dec = null; L.dir = '';
+}
+function openEdit(id, n){
+  var s = getSession(id), x = shotsOf(s).filter(function(y){ return y.n === n; })[0];
+  state.edit = {id:id, n:n, whole:x ? Math.floor(T(x.s)/10) : null, dec:x ? T(x.s)%10 : null, dir:x ? (x.d || '') : '', exists:!!x};
+}
+function padTarget(){ return state.edit || state.log; }
+
+function authCall(p, ok){
+  var A = state.auth; A.busy = true; A.msg = ''; render();
+  p.then(function(r){ A.busy = false; if (r.error) A.msg = r.error.message; else if (ok) ok(r); render(); })
+   .catch(function(e){ A.busy = false; A.msg = 'Could not reach the server. Check your connection.'; console.error(e); render(); });
+}
+function authEmail(){ var v = (document.getElementById('a-email') || {}).value; if (v != null) state.auth.email = v.trim(); return state.auth.email; }
+var handlers = {
+  'a-mode':function(){ authEmail(); state.auth.mode = state.auth.mode === 'signup' ? 'signin' : 'signup'; state.auth.msg = ''; render(); },
+  'a-submit':function(){
+    var email = authEmail(), pw = document.getElementById('a-pass').value, back = location.origin + location.pathname;
+    if (state.auth.mode === 'signup') authCall(sb.auth.signUp({email:email, password:pw, options:{emailRedirectTo:back}}), function(r){
+      if (!r.data.session){ state.auth.mode = 'signin'; state.auth.msg = 'Check your email and tap the link to confirm, then sign in.'; }
+    });
+    else authCall(sb.auth.signInWithPassword({email:email, password:pw}));
+  },
+  'a-forgot':function(){
+    var email = authEmail(); if (!email){ state.auth.msg = 'Type your email first.'; render(); return; }
+    authCall(sb.auth.resetPasswordForEmail(email, {redirectTo:location.origin + location.pathname}), function(){ state.auth.msg = 'If that email has an account, a reset link is on its way.'; });
+  },
+  'a-newpass':function(){
+    authCall(sb.auth.updateUser({password:document.getElementById('a-pass').value}), function(){ state.auth.mode = 'signin'; state.auth.msg = ''; toast('Password updated'); });
+  },
+  signout:function(){ flush(); sb.auth.signOut(); },
+  tab:function(el){ state.tab = el.dataset.v; if (state.tab !== 'sessions') state.openId = null; state.confirm = null; render(); window.scrollTo(0,0); },
+  cmp:function(el){ state.cmp = el.dataset.v; render(); },
+  metric:function(el){ state.metric = el.dataset.v; render(); },
+  open:function(el){ state.openId = el.dataset.id; state.confirm = null; render(); window.scrollTo(0,0); },
+  back:function(){ state.openId = null; render(); },
+  resume:function(el){ var s = getSession(el.dataset.id); state.log.active = s.id; state.log.n = nextMissing(s, 1); state.log.whole = state.log.dec = null; state.log.dir = ''; state.log.stack = []; state.tab = 'log'; render(); window.scrollTo(0,0); },
+  llabel:function(el){ state.log.label = el.dataset.v; render(); },
+  lfired:function(el){ state.log.fired = +el.dataset.v; render(); },
+  start:function(){ startLog(); render(); },
+  change:function(){ state.log.active = null; render(); },
+  whole:function(el){ var P = padTarget(); P.whole = +el.dataset.v; render(); },
+  dec:function(el){ var P = padTarget(); P.dec = +el.dataset.v; render(); },
+  dir:function(el){ var P = padTarget(); P.dir = el.dataset.v; render(); },
+  add:function(){ addShot(); render(); },
+  undo:function(){ undoShot(); render(); },
+  skip:function(){ var s = getSession(state.log.active); state.log.n = nextMissing(s, state.log.n + 1); state.log.whole = state.log.dec = null; state.log.dir = ''; render(); },
+  paste:function(){
+    var s = getSession(state.log.active), txt = document.getElementById('paste').value;
+    var nums = (txt.match(/\d{1,2}(?:[.,]\d)?/g) || []).map(function(t){ return +t.replace(',', '.'); });
+    if (!nums.length){ toast('No scores found'); return; }
+    if (nums.some(function(v){ return v > 10.9; })){ toast('A score above 10.9 was found. Check the list.'); return; }
+    nums.forEach(function(v){ var n = state.log.n; s.shots = s.shots.filter(function(x){ return x.n !== n; }); s.shots.push({n:n, s:v, d:''}); var sn = seriesNo(n); s.seriesTimes = s.seriesTimes || {}; if (!s.seriesTimes[sn]) s.seriesTimes[sn] = nowHM(); if (n > (s.fired || 0)) s.fired = n; state.log.stack.push(n); state.log.n = nextMissing(s, n + 1); });
+    persist(s); toast(nums.length + ' shot' + (nums.length > 1 ? 's' : '') + ' added'); render();
+  },
+  finish:function(){
+    var s = getSession(state.log.active), v = document.getElementById('f-screen').value;
+    s.screenTotal = v === '' ? null : r1(+v); s.note = document.getElementById('f-note').value.trim(); persist(s);
+    state.openId = s.id; state.tab = 'sessions'; state.log.active = null; render(); window.scrollTo(0,0);
+  },
+  edit:function(el){ openEdit(state.openId, +el.dataset.n); render(); },
+  'scan-edit':function(el){
+    var n = +el.dataset.n, x = state.scan.shots.filter(function(y){ return y.n === n; })[0];
+    state.edit = {scan:true, n:n, whole:Math.floor(T(x.s)/10), dec:T(x.s)%10, dir:x.d || '', exists:true}; render();
+  },
+  'scan-sep':function(el){ state.scan.separate = el.dataset.v === '1'; render(); },
+  'scan-save':function(){ saveScan(); render(); window.scrollTo(0,0); },
+  'scan-discard':function(){ state.scan = null; render(); },
+  'edit-save':function(){
+    var E = state.edit;
+    if (E.scan){
+      if (E.whole == null || E.dec == null){ toast('Pick a whole number and a decimal'); return; }
+      var v = (E.whole*10 + E.dec)/10; if (v > 10.9){ toast('The highest score is 10.9'); return; }
+      state.scan.shots = state.scan.shots.map(function(x){ return x.n === E.n ? {n:E.n, s:v, d:E.dir || ''} : x; });
+      state.edit = null; render(); return;
+    }
+    var s = getSession(E.id); if (E.whole == null || E.dec == null){ toast('Pick a whole number and a decimal'); return; }
+    var sc = (E.whole*10 + E.dec)/10; if (sc > 10.9){ toast('The highest score is 10.9'); return; }
+    s.shots = s.shots.filter(function(x){ return x.n !== E.n; }); s.shots.push({n:E.n, s:sc, d:E.dir || ''});
+    var sn = seriesNo(E.n); s.seriesTimes = s.seriesTimes || {};
+    if (E.n > (s.fired || 0)) s.fired = E.n; persist(s); state.edit = null; render();
+  },
+  'edit-del':function(){ var E = state.edit; if (E.scan){ state.scan.shots = state.scan.shots.filter(function(x){ return x.n !== E.n; }); state.edit = null; render(); return; } var s = getSession(E.id); s.shots = s.shots.filter(function(x){ return x.n !== E.n; }); persist(s); state.edit = null; render(); },
+  // The scrim carries edit-close too; only a tap on the scrim itself (not inside the sheet) closes it.
+  'edit-close':function(el, e){ if (el.classList.contains('scrim') && e.target !== el) return; state.edit = null; render(); },
+  'ask-del':function(el){ state.confirm = 'del-' + el.dataset.id; render(); setTimeout(function(){ if (state.confirm === 'del-' + el.dataset.id){ state.confirm = null; render(); } }, 5000); },
+  'del-session':function(el){ removeSession(el.dataset.id); state.openId = null; state.confirm = null; if (state.log.active === el.dataset.id) state.log.active = null; render(); toast('Session deleted'); },
+  'ask-wipe':function(){ state.confirm = 'wipe'; render(); setTimeout(function(){ if (state.confirm === 'wipe'){ state.confirm = null; render(); } }, 5000); },
+  wipe:function(){ state.sessions.slice().forEach(function(s){ removeSession(s.id); }); state.confirm = null; state.openId = null; state.log.active = null; render(); toast('All sessions deleted'); },
+  'do-import':function(){ var p = state.preview; p.sessions.forEach(function(s){ var old = getSession(s.id); if (old){ s.createdAt = old.createdAt; if (!s.note) s.note = old.note || ''; } persist(s); }); state.preview = null; toast(p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + ' added'); state.tab = 'summary'; state.focusId = null; render(); window.scrollTo(0,0); },
+  'cancel-import':function(){ state.preview = null; render(); },
+  'move-stray':function(){ state.stray.forEach(function(s){ persist(s); }); lsSet(LS_LOCAL, []); var n = state.stray.length; state.stray = []; toast(n + ' moved to your account'); render(); },
+  'x-csv':function(){ offerFile('raptor-shots.csv', toCSV(shotRows())); },
+  'x-json':function(){ offerFile('raptor-backup.json', JSON.stringify({app:'raptOR', exported:new Date().toISOString(), sessions:state.sessions.map(plain)}, null, 1)); },
+  'x-xlsx':function(){
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(shotRows()), 'Shots');
+    var sum = [['Date','Session','Logged shots','Total','Screen total','Average','Tens','Tens %','Marked','Under 7','SD','60-shot pace']];
+    sorted().forEach(function(s){ var c = calc(s, cfg()); sum.push([s.date, s.label, c.n, c.sum, c.screenTotal == null ? '' : c.screenTotal, c.avg == null ? '' : +c.avg.toFixed(3), c.tensN, c.tensPct == null ? '' : +c.tensPct.toFixed(1), c.markN, c.under7, c.sd == null ? '' : +c.sd.toFixed(3), c.pace == null ? '' : +c.pace.toFixed(1)]); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Sessions');
+    offerFile('raptor-log.xlsx', XLSX.write(wb, {bookType:'xlsx', type:'array'}));
+  }
+};
+document.addEventListener('submit', function(e){
+  var f = e.target.closest('form[data-submit]'); if (!f) return;
+  e.preventDefault(); var fn = handlers[f.dataset.submit]; if (fn) fn(f, e);
+});
+document.addEventListener('click', function(e){
+  var el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  var fn = handlers[el.dataset.act]; if (fn) fn(el, e);
+});
+document.addEventListener('change', function(e){
+  var el = e.target, f = el.dataset && el.dataset.field;
+  if (el.id === 'scan' && el.files && el.files[0]){ startScan(el.files[0]); el.value = ''; return; }
+  if (state.scan && f === 'scan-date'){ if (el.value){ state.scan.date = el.value; state.scan.dateRead = true; } render(); return; }
+  if (state.scan && f === 'scan-label'){ state.scan.label = el.value; render(); return; }
+  if (state.scan && f === 'scan-override'){ state.scan.override = el.checked; render(); return; }
+  if (el.id === 'file' && el.files && el.files[0]){
+    readFile(el.files[0]).then(function(p){ state.preview = p; render(); }).catch(function(err){ console.error(err); toast('Could not read that file'); });
+    el.value = ''; return;
+  }
+  if (!f) return;
+  var s = state.openId ? getSession(state.openId) : null;
+  if (f === 'focus'){ state.focusId = el.value; render(); }
+  else if (f === 'l-date'){ if (el.value){ state.log.date = el.value; render(); } }
+  else if (f === 'c-tens' || f === 'c-mark' || f === 'c-plan'){
+    var v = +el.value; if (!isFinite(v) || v <= 0) return;
+    if (f === 'c-tens') state.cfg.tens = v; if (f === 'c-mark') state.cfg.mark = v; if (f === 'c-plan'){ state.cfg.planned = Math.round(v); state.log.fired = state.cfg.planned; }
+    saveCfg(); render();
+  }
+  else if (s && (f === 's-date' || f === 's-label')){
+    var nd = f === 's-date' ? el.value : s.date, nl = f === 's-label' ? el.value : s.label, nid = makeId(nd, nl);
+    if (!nd) return;
+    if (nid !== s.id && getSession(nid)){ toast('A session already exists for that date and name'); render(); return; }
+    var old = s.id; removeSession(old); s.id = nid; s.date = nd; s.label = nl; persist(s); state.openId = nid; render();
+  }
+  else if (s && f === 's-fired'){ var n = Math.round(+el.value); if (n > 0){ s.fired = n; persist(s); render(); } }
+  else if (s && f === 's-screen'){ s.screenTotal = el.value === '' ? null : r1(+el.value); persist(s); render(); }
+  else if (s && f === 's-note'){ s.note = el.value.trim(); persist(s); }
+});
+
+/* ---------- render ---------- */
+function editSheet(){
+  var E = state.edit; if (!E) return '';
+  var title = E.scan ? 'Scanned reading' : nameOf(getSession(E.id));
+  return '<div class="scrim" data-act="edit-close"><div class="sheet" role="dialog" aria-label="Edit shot">'
+    + '<div class="row between"><div><div class="lab">' + esc(title) + '</div><h2>Shot ' + E.n + ' <span class="muted" style="font-weight:400;font-size:15px">· series ' + seriesNo(E.n) + '</span></h2></div><div class="read mono" style="font-size:36px">' + readout(E) + '</div></div>'
+    + pads(E) + '<div class="row"><button class="btn primary grow" data-act="edit-save">Save shot</button>' + (E.exists ? '<button class="btn danger" data-act="edit-del">Delete</button>' : '') + '<button class="btn" data-act="edit-close">Cancel</button></div></div></div>';
+}
+function render(){
+  var y = window.scrollY, nav = document.querySelector('nav');
+  if (!state.user || state.auth.mode === 'recover'){
+    nav.hidden = true; $app.innerHTML = viewAuth(); document.getElementById('modal').innerHTML = ''; setSyncUI(); return;
+  }
+  nav.hidden = false;
+  document.getElementById('tabs').innerHTML = TABS.map(function(t){ return '<button data-act="tab" data-v="' + t[0] + '"' + (state.tab === t[0] ? ' aria-current="page"' : '') + '>' + ICONS[t[0] === 'summary' ? 'summary' : t[0]] + '<span>' + t[1] + '</span></button>'; }).join('');
+  chartData = {};
+  var v = state.tab === 'summary' ? viewSummary() : state.tab === 'log' ? viewLog() : state.tab === 'sessions' ? viewSessions() : state.tab === 'trends' ? viewTrends() : viewData();
+  $app.innerHTML = v;
+  document.getElementById('modal').innerHTML = editSheet();
+  bindCharts(); setSyncUI();
+  if (!state.openId || state.tab !== 'sessions') { /* keep scroll */ }
+  window.scrollTo(0, y);
+}
+window.__raptor = {state:state, render:render, calc:calc, handlers:handlers, readFile:readFile};
+initStore();
+})();
+</script>
+
+</body></html>
