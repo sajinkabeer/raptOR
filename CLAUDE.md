@@ -72,3 +72,4 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - Function: `supabase functions deploy read-scoreboard --project-ref kmxjerumxxcszvpiiixc --use-api` (`--use-api` avoids needing Docker).
 - Gemini key: `supabase secrets set GEMINI_API_KEY=...`.
 - Site: `npx vercel deploy web --prod`.
+- Open copies pick up a deploy by themselves: `checkUpdate()` records the page's ETag at load and does a HEAD request on every `visibilitychange`. If the ETag has changed, it reloads, unless a scan review, the shot editor, a sign-in request or a password reset is open.

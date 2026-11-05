@@ -660,7 +660,18 @@ async function loadAccount(){
   mirror(); state.sync = 'cloud'; lastSig = signature(); render();
   flush();
 }
+// A home-screen app resumes the old page from memory, so on return check for a newer deploy and reload when nothing unsaved is open.
+var pageVer = null;
+function checkUpdate(){
+  fetch(location.pathname, {method:'HEAD', cache:'no-store'}).then(function(r){
+    var v = r.ok && (r.headers.get('etag') || r.headers.get('last-modified') || '').replace(/^W\//, '');
+    if (!v) return;
+    if (pageVer == null) pageVer = v;
+    else if (v !== pageVer && !state.scan && !state.scanBusy && !state.edit && !state.auth.busy && state.auth.mode !== 'recover') location.reload();
+  }).catch(function(){});
+}
 function initStore(){
+  checkUpdate();
   if (!sb){ state.auth.msg = 'Could not load sign-in. Check your connection and reload.'; render(); return; }
   sb.auth.onAuthStateChange(function(ev, session){
     if (ev === 'PASSWORD_RECOVERY') state.auth.mode = 'recover';
@@ -671,7 +682,7 @@ function initStore(){
     if (state.user && state.user.id !== was) setTimeout(loadAccount, 0); else render();
   });
   window.addEventListener('online', flush);
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) flush(); });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden){ flush(); checkUpdate(); } });
 }
 
 /* ---------- views ---------- */
