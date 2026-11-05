@@ -442,6 +442,15 @@ function usualSeries(list, skipId, skipNo){
   }); });
   return k >= 2 ? {avg:tot/10/k, n:k} : null;
 }
+// A re-scan of a saved photo: the session that already holds every scanned shot with the same score and arrow.
+function alreadySaved(list, shots){
+  if (!shots.length) return null;
+  for (var i = 0; i < list.length; i++){
+    var have = {}; shotsOf(list[i]).forEach(function(x){ have[x.n] = x; });
+    if (shots.every(function(x){ var o = have[x.n]; return o && T(o.s) === T(x.s) && (o.d || '') === (x.d || ''); })) return list[i];
+  }
+  return null;
+}
 // Local copies with an unsynced upsert survive the server list; pending deletes stay hidden.
 function mergeRemote(local, remote, pending){
   var mine = {}; local.forEach(function(s){ mine[s.id] = s; });
@@ -685,7 +694,7 @@ function compass(ds){
   });
   return h + '</div>';
 }
-function byDir(ds){ return '<details class="more"><summary>By direction</summary><div class="stack" style="margin-top:8px">' + compass(ds) + '<div class="muted small">Share of shots by direction, then shot count and average score in that direction.</div></div></details>'; }
+function byDir(ds){ return '<details class="more" id="by-dir"><summary>By direction</summary><div class="stack" style="margin-top:8px">' + compass(ds) + '<div class="muted small">Share of shots by direction, then shot count and average score in that direction.</div></div></details>'; }
 function num(v, dp){ return v == null ? '–' : '<span data-count="' + v + '" data-dp="' + dp + '">' + (+v).toFixed(dp) + '</span>'; }
 var DIR_NAME = {'↑':'high','↗':'high right','→':'right','↘':'low right','↓':'low','↙':'low left','←':'left','↖':'high left'};
 function biasText(b){
@@ -887,7 +896,7 @@ function viewDetail(s){
   h += '<section class="card stack"><h3>Score spread</h3>' + bucketBars(c.buckets) + '</section>';
   h += '<section class="card stack"><h3>Where shots landed</h3>' + target(shotsOf(s)) + byDir(dirStats([s])) + '</section>';
 
-  h += '<section class="card stack"><details><summary>Session details</summary><div class="stack" style="margin-top:10px">'
+  h += '<section class="card stack"><details id="sd-' + esc(s.id) + '"><summary>Session details</summary><div class="stack" style="margin-top:10px">'
     + '<div class="row"><label class="f grow"><span class="lab">Date</span><input type="date" id="d-date" data-field="s-date" value="' + esc(s.date) + '"></label>'
     + '<label class="f grow"><span class="lab">Session</span><select id="d-label" data-field="s-label">' + labelOptions(s.label) + '</select></label></div>'
     + '<div class="row"><label class="f grow"><span class="lab">Shots fired</span><input type="number" inputmode="numeric" id="d-fired" data-field="s-fired" min="1" max="200" value="' + c.fired + '"></label>'
@@ -962,11 +971,12 @@ function viewScan(){
   var hit = {}; scanConflicts(target, S.shots).forEach(function(n){ hit[n] = 1; });
   var chk = scanCheck(S.shots, S.subtotal), canSave = S.date && S.shots.length && (!S.sighter || S.override);
   var base = target || {id:'', date:S.date, label:S.label, fired:cfg().planned, shots:[], seriesTimes:{}};
-  var miss = calc(mergeShots(base, S.shots, S.time), cfg()).missing;
+  var miss = calc(mergeShots(base, S.shots, S.time), cfg()).missing, dup = alreadySaved(state.sessions, S.shots);
   var h = '<section class="card stack"><div><div class="lab">Scanned scoreboard</div><h2>Check the reading</h2></div>'
     + '<div class="row"><label class="f grow"><span class="lab">Date on screen</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
     + '<label class="f grow"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
-    + (S.dateRead ? '' : '<div class="note">The date on the screen was not readable. Check it before saving.</div>');
+    + (S.dateRead || dup ? '' : '<div class="note">The date on the screen was not readable. Check it before saving.</div>')
+    + (dup ? '<div class="check ok">✓ Already saved in ' + esc(nameOf(dup)) + '</div><div class="small ink2">All ' + S.shots.length + ' shots on this photo are saved there with the same scores and arrows, so there is nothing new to save. Change a shot below if the saved one is wrong.</div>' : '');
   var by = {}, gaps = 0; S.shots.forEach(function(x){ by[x.n] = x; });
   h += '<div class="grid">';
   S.series.forEach(function(k){
@@ -980,6 +990,7 @@ function viewScan(){
   h += chk.ok === true ? '<div class="check ok">✓ Matches screen subtotal ' + f1(chk.subtotal) + '</div>'
     : chk.ok === false ? '<div class="note">Shots add up to ' + f1(chk.sum) + ', screen says ' + f1(chk.subtotal) + '. Check before saving.</div>'
     : '<div class="check muted">No subtotal on screen to check</div>';
+  if (dup) return h + '<div class="row"><button class="btn primary grow" data-act="scan-dup-open" data-id="' + esc(dup.id) + '">Open session</button><button class="btn" data-act="scan-discard">Done</button></div></section>';
   if (scanConflicts(main, S.shots).length) h += '<div class="note">Some of these shots are already saved in ' + esc(nameOf(main)) + ' with different values (outlined).</div>'
     + '<div class="seg" role="group" aria-label="Saved shots"><button data-act="scan-sep" data-v="0" aria-pressed="' + !S.separate + '">Replace saved shots</button><button data-act="scan-sep" data-v="1" aria-pressed="' + !!S.separate + '">Save as separate session (Other)</button></div>';
   if (S.sighter) h += '<div class="note">This looks like a sighter screen, not match shots.</div><label class="row small"><input type="checkbox" data-field="scan-override"' + (S.override ? ' checked' : '') + '> Save these as match shots anyway</label>';
@@ -1253,6 +1264,7 @@ var handlers = {
 
 
   edit:function(el){ openEdit(state.openId, +el.dataset.n); render(); },
+  'scan-dup-open':function(el){ var id = el.dataset.id; state.scan = null; fade(function(){ state.openId = id; state.tab = 'sessions'; render(); window.scrollTo(0,0); }); },
   'open-log':function(){ state.openId = state.log.active; state.tab = 'sessions'; render(); window.scrollTo(0,0); },
   'scan-edit':function(el){
     var n = +el.dataset.n, x = state.scan.shots.filter(function(y){ return y.n === n; })[0];
@@ -1365,7 +1377,10 @@ function render(){
   document.getElementById('scan').disabled = !!state.scanBusy;
   chartData = {};
   var v = state.tab === 'summary' ? viewSummary() : state.tab === 'log' ? viewLog() : state.tab === 'sessions' ? viewSessions() : state.tab === 'trends' ? viewTrends() : viewData();
+  // Full re-render would collapse open sections (and hide e.g. "Tap again to delete"); reopen them.
+  var open = [].map.call($app.querySelectorAll('details[open][id]'), function(d){ return d.id; });
   $app.innerHTML = v;
+  open.forEach(function(id){ var d = document.getElementById(id); if (d) d.open = true; });
   document.getElementById('modal').innerHTML = state.scanBusy ? scanOverlay() : editSheet();
   bindCharts(); setSyncUI();
   if (state.countUp && state.sessions.length){ state.countUp = false; countUp(); }

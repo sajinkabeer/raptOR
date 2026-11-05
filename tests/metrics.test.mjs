@@ -118,3 +118,17 @@ test('usualSeries averages complete series, skipping the one just shot', () => {
   close(u.avg, 95);
   assert.equal(M.usualSeries([a], 'a', 1), null); // only one series left: not enough
 });
+
+test('alreadySaved finds the session holding every scanned shot unchanged', () => {
+  const a = sess(series1(), { id: 'a' });
+  const b = sess([...series1(), ...REAL], { id: 'b', date: '2026-11-03' });
+  assert.equal(M.alreadySaved([a, b], REAL).id, 'b');           // found even under another date
+  assert.equal(M.alreadySaved([a, b], REAL.slice(2, 5)).id, 'b'); // part of a saved series
+  const changed = REAL.map(x => x.n === 14 ? { ...x, s: 8.5 } : x);
+  assert.equal(M.alreadySaved([a, b], changed), null);           // a different score is new info
+  const newArrow = REAL.map(x => x.n === 14 ? { ...x, d: '←' } : x);
+  assert.equal(M.alreadySaved([a, b], newArrow), null);
+  const extra = [...REAL, { n: 21, s: 10, d: '↑' }];
+  assert.equal(M.alreadySaved([a, b], extra), null);             // a shot not saved yet
+  assert.equal(M.alreadySaved([a, b], []), null);
+});
