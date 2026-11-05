@@ -8,6 +8,7 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - `web/index.html` is the whole front end: inline CSS and vanilla ES5-style JS, no build step and no package manager. It loads Google Fonts, SheetJS `xlsx@0.18.5` (cdnjs) and `@supabase/supabase-js@2.117.0` (jsdelivr UMD).
 - `supabase/` holds the backend for project `kmxjerumxxcszvpiiixc`: `migrations/` (tables plus RLS) and `functions/read-scoreboard/` (a Deno Edge Function that reads scoreboard photos with Gemini).
 - Static hosting is on Vercel (deploy `web/` only). Design and plan are in `docs/superpowers/`.
+- `web/apple-touch-icon.png` (180×180, opaque, the iOS home-screen icon) and `web/icon.svg` (favicon) are the target logo on Pantone 222. Regenerate the PNG from the SVG with QuickLook (`qlmanage -t -s 180`) and flatten it; headless Chrome renders this SVG wrongly.
 - `.env.local` holds `GEMINI_API_KEY` for local experiments only. The live key is a Supabase secret. Never put it in `web/`.
 
 ## Running / checking
@@ -15,6 +16,7 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - Run locally: `python3 -m http.server -d web 8080` and open http://localhost:8080 (no build step).
 - Tests: `node --test tests/*.test.mjs` (pure METRICS-block logic, loaded by `tests/load-metrics.mjs`) and `deno test supabase/functions/` (Edge Function validation).
 - Single test: `node --test --test-name-pattern="scanCheck" tests/*.test.mjs`.
+- The tests only load the metrics block. Syntax-check the whole app script after edits: `awk '/<script>$/{f=1;next} /<\/script>/{f=0} f' web/index.html > /tmp/app.js && node --check /tmp/app.js`.
 - The block between `/*==METRICS-START==*/` and `/*==METRICS-END==*/` must stay global and DOM-free; add new pure functions there and export them in `tests/load-metrics.mjs`.
 - Debug handle: `window.__raptor` exposes `{state, render, calc, handlers, readFile}`.
 
@@ -46,6 +48,7 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - All user text must go through `esc()`.
 - Events are delegated at document level. Click: `[data-act]` → `handlers[act](el, e)`. Change: `[data-field]` is handled in one switch inside the `change` listener.
 - To add an action: emit `data-act="x"` in a view and add `handlers.x`.
+- Summary is the all-sessions overview: pooled tiles with recent-form chips (`formSplit`: last ≤3 sessions vs the rest), session-by-session `dotPlot`, Personal bests (`records`, tapping opens the session), cross-session notes and the pooled `target`. Single-session analysis (tiles, `insights()`) is on the session page.
 - Charts are hand-built inline SVG (`dotPlot`, `bucketBars`, `compass`, `lineChart`, `target`). `target()` plots shots from `shotXY` (score = distance, arrow = 45° sector, so positions are approximate) with the `groupBias` centroid; `biasText()` turns it into the sentence.
 - Motion: `fade()` wraps tab/session navigation in a View Transition; `[data-count]` numbers count up when `state.countUp` is set; `.pop` plays once on the series result. All are skipped under `prefers-reduced-motion`. `lineChart` hover data goes through the module-level `chartData`, which is reset on every render and wired up by `bindCharts()`.
 - Destructive actions use the "tap again" pattern: `state.confirm` is set, then cleared after 5 s.

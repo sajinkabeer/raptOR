@@ -132,3 +132,30 @@ test('alreadySaved finds the session holding every scanned shot unchanged', () =
   assert.equal(M.alreadySaved([a, b], extra), null);             // a shot not saved yet
   assert.equal(M.alreadySaved([a, b], []), null);
 });
+
+const day = (id, scores, d = '') => sess(scores.map((s, i) => ({ n: i + 1, s, d })), { id, date: '2026-11-0' + id.slice(-1) });
+const ten = v => Array(10).fill(v);
+
+test('formSplit compares the latest sessions with the ones before', () => {
+  const L = [1, 2, 3, 4, 5, 6, 7].map(i => day('s' + i, ten(9)));
+  let f = M.formSplit(L);
+  assert.deepEqual(f.recent.map(s => s.id), ['s5', 's6', 's7']);
+  assert.equal(f.earlier.length, 4);
+  f = M.formSplit(L.slice(0, 3));
+  assert.deepEqual(f.recent.map(s => s.id), ['s3']);
+  assert.equal(f.earlier.length, 2);
+  assert.equal(M.formSplit(L.slice(0, 1)), null);
+});
+
+test('records picks best average, tens, series and tightest session', () => {
+  const a = day('s1', [...ten(9), ...ten(10.5)]);           // series 2 = 105.0, the best series
+  const b = day('s2', ten(10.1));                            // best average 10.1, 100% tens, SD 0
+  const c = day('s3', [9, 10, 9, 10, 9, 10, 9, 10, 9, 10]); // spread out
+  const tiny = day('s4', [10.9, 10.9]);                      // under 10 shots: ignored
+  const r = M.records([a, b, c, tiny]);
+  assert.equal(r.bestAvg.s.id, 's2'); assert.equal(r.bestAvg.v, 10.1);
+  assert.equal(r.bestTens.s.id, 's2');
+  assert.equal(r.bestSeries.s.id, 's1'); assert.equal(r.bestSeries.no, 2); assert.equal(r.bestSeries.sum, 105);
+  assert.equal(r.tightest.s.id, 's2');
+  assert.equal(M.records([tiny]), null);
+});

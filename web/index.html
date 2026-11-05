@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon.svg" type="image/svg+xml"><meta name="apple-mobile-web-app-title" content="raptOR"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>raptOR</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -85,7 +85,12 @@ main{padding-top:16px;display:flex;flex-direction:column;gap:16px}
 .btn.link{border:0;min-height:0;padding:0;color:var(--accent);text-decoration:underline;font-weight:400;background:none}
 input[type=text],input[type=number],input[type=date],input[type=email],input[type=password],select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line2);border-radius:4px;padding:9px 10px;min-height:44px;width:100%}
 textarea{min-height:76px;resize:vertical;font-family:var(--mono);font-size:14px}
-label.f{display:flex;flex-direction:column;gap:5px}
+label.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+/* two inputs side by side; iOS date inputs have a wide built-in width unless told they may shrink */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.pair input,.pair select{height:46px}
+input[type=date]{min-width:0;-webkit-appearance:none;appearance:none;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
 .seg{display:flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
 .seg button{flex:1;border:0;background:transparent;min-height:40px;padding:0 8px;font-size:14px;border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
@@ -146,6 +151,8 @@ td.good{color:var(--good)} td.bad{color:var(--bad)}
 .dp-ref{position:absolute;top:2px;bottom:2px;width:0;border-left:1px dashed var(--ink3)}
 .dp-axis{display:grid;grid-template-columns:64px minmax(0,1fr) 48px;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
 .dp-axis div{display:flex;justify-content:space-between}
+.dp.wide .dp-row,.dp.wide .dp-axis{grid-template-columns:96px minmax(0,1fr) 48px}
+.dp-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* bars */
 .br{display:grid;grid-template-columns:62px minmax(0,1fr) 92px;align-items:center;gap:8px;min-height:28px}
@@ -172,6 +179,11 @@ body.auth main{min-height:calc(100vh - 64px - env(safe-area-inset-top,0px));min-
 .login input{border-radius:12px}
 .login .btn.primary{border-radius:12px;min-height:48px}
 .login .note{border-radius:0 8px 8px 0}
+
+/* personal bests */
+.recs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.rec{display:flex;flex-direction:column;gap:2px;text-align:left;background:transparent;border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-height:44px}
+.rec b{font-size:22px;font-variant-numeric:tabular-nums}
 
 /* target */
 .tgtw{max-width:320px;width:100%;margin:0 auto}
@@ -452,6 +464,24 @@ function usualSeries(list, skipId, skipNo){
   }); });
   return k >= 2 ? {avg:tot/10/k, n:k} : null;
 }
+// Recent form: the latest sessions (up to 3, never more than half) against all before them. list is chronological.
+function formSplit(list){
+  var k = Math.min(3, Math.floor(list.length/2));
+  return k ? {recent:list.slice(-k), earlier:list.slice(0, -k)} : null;
+}
+// Bests across sessions with at least 10 shots; bestSeries counts full 10-shot series only.
+function records(list, cfg){
+  var r = null;
+  list.forEach(function(s){
+    var c = calc(s, cfg); if (c.n < 10) return;
+    r = r || {};
+    if (!r.bestAvg || c.avg > r.bestAvg.v) r.bestAvg = {s:s, v:c.avg};
+    if (!r.bestTens || c.tensPct > r.bestTens.v) r.bestTens = {s:s, v:c.tensPct};
+    if (c.sd != null && (!r.tightest || c.sd < r.tightest.v)) r.tightest = {s:s, v:c.sd};
+    c.series.forEach(function(x){ if (x.n === 10 && (!r.bestSeries || x.sum > r.bestSeries.sum)) r.bestSeries = {s:s, no:x.no, sum:x.sum}; });
+  });
+  return r;
+}
 // A re-scan of a saved photo: the session that already holds every scanned shot with the same score and arrow.
 function alreadySaved(list, shots){
   if (!shots.length) return null;
@@ -485,7 +515,7 @@ var LS_LOCAL = 'raptor_v2_local'; // pre-account local data, offered for moving 
 
 var state = {
   tab:'summary', sessions:[], cfg:Object.assign({}, DEFAULT_CFG), sync:'connecting',
-  focusId:null, cmp:'prev', openId:null, metric:'avg',
+  openId:null, metric:'avg',
   log:{active:null, result:null}, countUp:true,
   edit:null, preview:null, stray:[], confirm:null, scan:null,
   user:null, auth:{mode:'signin', email:'', busy:false, msg:''}
@@ -676,7 +706,7 @@ function dotPlot(rows, o){
   var lo = Math.floor((mn - 0.15)*2)/2, hi = Math.ceil((mx + 0.15)*2)/2;
   if (hi - lo < 1){ hi = lo + 1; }
   var x = function(v){ return ((v - lo)/(hi - lo)*100).toFixed(2) + '%'; };
-  var h = '<div class="dp" role="img" aria-label="'+esc(o.aria || 'Average score by row')+'">';
+  var h = '<div class="dp' + (o.wide ? ' wide' : '') + '" role="img" aria-label="'+esc(o.aria || 'Average score by row')+'">';
   rows.forEach(function(r){
     if (r.v == null) return;
     h += '<div class="dp-row" title="'+esc(r.tip || '')+'"><span class="dp-l">'+esc(r.l)+'</span><div class="dp-t">'
@@ -810,60 +840,59 @@ function insights(cur, c, list, idx){
     var low = ds.by['↙'].c + ds.by['↓'].c + ds.by['↘'].c, high = ds.by['↖'].c + ds.by['↑'].c + ds.by['↗'].c;
     var left = ds.by['↖'].c + ds.by['←'].c + ds.by['↙'].c, right = ds.by['↗'].c + ds.by['→'].c + ds.by['↘'].c;
     var topDir = DIRS.reduce(function(a,b){ return ds.by[b].c > ds.by[a].c ? b : a; });
-    out.push('Across all ' + ds.total + ' logged shots with a direction, ' + (100*low/ds.total).toFixed(0) + '% landed low (' + (100*high/ds.total).toFixed(0) + '% high) and ' + (100*right/ds.total).toFixed(0) + '% right (' + (100*left/ds.total).toFixed(0) + '% left). Most common: ' + topDir + ' at ' + ds.by[topDir].pct.toFixed(0) + '%.');
-  }
-  if (c.missing.length){
-    out.push('Shot' + (c.missing.length > 1 ? 's ' : ' ') + shotRanges(c.missing) + ' not logged yet' + (c.screenDiff != null && c.screenDiff > 0 ? ', worth ' + f1(c.screenDiff) + ' points on the screen total' : '') + '. Stats use the ' + c.n + ' shots that are logged.');
+    out.push('Of ' + ds.total + ' shots with a direction, ' + (100*low/ds.total).toFixed(0) + '% landed low (' + (100*high/ds.total).toFixed(0) + '% high) and ' + (100*right/ds.total).toFixed(0) + '% right (' + (100*left/ds.total).toFixed(0) + '% left). Most common: ' + topDir + ' at ' + ds.by[topDir].pct.toFixed(0) + '%.');
   }
   return out;
 }
+// Home: every session together. Single-session analysis lives on the session page.
 function viewSummary(){
-  var list = sorted(); if (!list.length) return emptyState();
-  var idx = list.length - 1;
-  if (state.focusId){ var fi = list.findIndex(function(s){ return s.id === state.focusId; }); if (fi >= 0) idx = fi; }
-  var cur = list[idx], c = calc(cur, cfg());
-  var base = null, baseName = '';
-  if (state.cmp === 'all'){
-    var earlier = list.slice(0, idx);
-    if (earlier.length){ base = calc(pool(earlier), cfg()); baseName = 'all ' + earlier.length + ' earlier session' + (earlier.length > 1 ? 's' : ''); }
-  } else if (idx > 0){ base = calc(list[idx-1], cfg()); baseName = shortName(list[idx-1]); }
-  var d = compare(c, base);
-  var h = '';
-  h += '<div class="row between"><label class="f grow"><span class="lab">Session</span><select id="focus" data-field="focus">' + list.slice().reverse().map(function(s){ return '<option value="'+esc(s.id)+'"'+(s.id === cur.id ? ' selected' : '')+'>'+esc(nameOf(s))+'</option>'; }).join('') + '</select></label></div>';
-  h += '<section class="card stack"><div class="row between"><h2>' + esc(nameOf(cur)) + '</h2><span class="pill">' + c.n + ' shots logged</span></div>';
+  var all = sorted(); if (!all.length) return emptyState();
+  var C = cfg(), pl = calc(pool(all), C), full = all.filter(function(s){ return calc(s, C).n >= 10; });
+  var fs = formSplit(full), rc = fs && calc(pool(fs.recent), C), ec = fs && calc(pool(fs.earlier), C), d = fs ? compare(rc, ec) : null;
+  var k = fs ? fs.recent.length : 0, ne = fs ? fs.earlier.length : 0;
+  var h = '<section class="card stack"><div class="row between"><div><div class="lab">All sessions</div><h2>' + all.length + ' session' + (all.length > 1 ? 's' : '') + ' · ' + pl.n + ' shots</h2></div>'
+    + '<span class="pill">' + esc(shortDate(all[0].date)) + (all.length > 1 ? ' – ' + esc(shortDate(all[all.length-1].date)) : '') + '</span></div>';
   h += '<div class="tiles">'
-    + '<div class="tile"><div class="lab">Tens</div><div class="v">' + num(c.tensPct, 1) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '<div class="muted small" style="margin-top:4px">' + c.tensN + ' of ' + c.n + ' shots</div></div>'
-    + '<div class="tile"><div class="lab">Average</div><div class="v">' + num(c.avg, 2) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '<div class="muted small" style="margin-top:4px">per shot</div></div>'
-    + '<div class="tile"><div class="lab">60-shot pace</div><div class="v">' + num(c.pace, 1) + '</div>' + (d ? chip(d.pace, 1, '', true) : '') + '<div class="muted small" style="margin-top:4px">average × 60</div></div>'
-    + '</div>';
-  if (c.missing.length) h += '<div class="note">' + c.missing.length + ' shot' + (c.missing.length > 1 ? 's are' : ' is') + ' missing from this session (' + shotRanges(c.missing) + '). Numbers use the ' + c.n + ' logged shots' + (c.screenTotal != null ? '; the screen total is ' + f1(c.screenTotal) + ' against ' + f1(c.sum) + ' logged' : '') + '.</div>';
-  h += '</section>';
-  h += '<section class="card stack"><h3>Where shots landed</h3>' + target(shotsOf(cur)) + '</section>';
+    + '<div class="tile"><div class="lab">Average</div><div class="v">' + num(pl.avg, 2) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '<div class="muted small" style="margin-top:4px">per shot</div></div>'
+    + '<div class="tile"><div class="lab">Tens</div><div class="v">' + num(pl.tensPct, 1) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '<div class="muted small" style="margin-top:4px">' + pl.tensN + ' of ' + pl.n + '</div></div>'
+    + '<div class="tile"><div class="lab">60-shot pace</div><div class="v">' + num(pl.pace, 1) + '</div>' + (d ? chip(d.pace, 1, '', true) : '') + '<div class="muted small" style="margin-top:4px">average × 60</div></div></div>';
+  h += '<div class="muted small">' + (d ? 'Arrows show recent form: your last ' + (k > 1 ? k + ' sessions' : 'session') + ' against the ' + (ne > 1 ? ne + ' before' : 'one before') + '.' : 'Recent-form arrows appear once 2 sessions have at least 10 shots.') + '</div></section>';
 
-  h += '<section class="card stack"><div class="row between"><h3>Change since' + (base ? '' : ' last session') + '</h3><div class="seg" style="min-width:210px"><button data-act="cmp" data-v="prev" aria-pressed="' + (state.cmp === 'prev') + '">Last session</button><button data-act="cmp" data-v="all" aria-pressed="' + (state.cmp === 'all') + '">All earlier</button></div></div>';
-  if (!base) h += '<div class="muted small">' + (idx === 0 ? 'This is your first logged session, so there is nothing to compare with yet.' : 'No earlier session to compare with.') + '</div>';
-  else if (!d) h += '<div class="muted small">Needs at least 10 logged shots in both sessions to compare fairly.</div>';
-  else {
-    h += '<div class="lab">vs ' + esc(baseName) + ' · ' + base.n + ' shots</div><div class="tw"><table><thead><tr><th>Metric</th><th>This</th><th>Before</th><th>Change</th></tr></thead><tbody>'
-      + row('Tens %', f1(c.tensPct) + '%', f1(base.tensPct) + '%', d.tensPts, 1, ' pts', true, d.tensRel != null ? ' (' + signed(d.tensRel, 0, '%') + ')' : '')
-      + row('Average / shot', f2(c.avg), f2(base.avg), d.avgPct, 1, '%', true)
-      + row('60-shot pace', f1(c.pace), f1(base.pace), d.pace, 1, '', true)
-      + row('Shots ' + f1(cfg().mark) + '+', f1(c.markPct) + '%', f1(base.markPct) + '%', d.markPts, 1, ' pts', true)
-      + row('Under 7', c.under7 + ' (' + (100*c.under7/c.n).toFixed(1) + '%)', base.under7 + ' (' + (100*base.under7/base.n).toFixed(1) + '%)', c.under7/c.n*100 - base.under7/base.n*100, 1, ' pts', false)
-      + row('Spread (SD)', f2(c.sd), f2(base.sd), d.sd, 2, '', false)
-      + '</tbody></table></div><div class="muted small">Percent change is the change in average score per shot, so sessions with different shot counts compare fairly. Tens change is in percentage points, with the relative change in brackets.</div>';
+  if (full.length >= 2){
+    var shown = full.slice(-12);
+    h += '<section class="card stack"><h3>Session by session</h3>' + dotPlot(shown.map(function(s){ var c = calc(s, C); return {l:shortDate(s.date) + ' ' + s.label.slice(0, 3), v:c.avg, tip:nameOf(s) + ': ' + f2(c.avg) + ', ' + f1(c.tensPct) + '% tens, ' + c.n + ' shots'}; }), {ref:pl.avg, refLabel:'overall average', aria:'Average per shot in each session', wide:true})
+      + '<div class="muted small">Average per shot in each session, oldest at the top' + (full.length > 12 ? '. The latest 12 of ' + full.length + ' are shown; Trends has them all' : '') + '.</div></section>';
   }
-  h += '</section>';
 
-  var ins = insights(cur, c, list, idx);
+  var R = records(all, C);
+  if (R) h += '<section class="card stack"><h3>Personal bests</h3><div class="recs">'
+    + rec('Best average', f2(R.bestAvg.v), R.bestAvg.s) + rec('Most tens', f1(R.bestTens.v) + '%', R.bestTens.s)
+    + (R.bestSeries ? rec('Best series', f1(R.bestSeries.sum), R.bestSeries.s, 'series ' + R.bestSeries.no) : '')
+    + (R.tightest ? rec('Tightest group', 'SD ' + f2(R.tightest.v), R.tightest.s) : '') + '</div></section>';
+
+  var ins = [];
+  if (d){ var df = rc.avg - ec.avg;
+    ins.push('Your last ' + (k > 1 ? k + ' sessions' : 'session') + ' averaged ' + f2(rc.avg) + ' per shot, ' + (Math.abs(df) < 0.005 ? 'level with' : (df > 0 ? 'up ' : 'down ') + f2(Math.abs(df)) + ' on') + ' the ' + (ne > 1 ? ne + ' before' : 'one before') + ' (' + f2(ec.avg) + ').'); }
+  if (full.length >= 3){
+    var cs = full.map(function(s){ return {s:s, v:calc(s, C).avg}; });
+    var hi = cs.reduce(function(a, b){ return b.v > a.v ? b : a; }), lo = cs.reduce(function(a, b){ return b.v < a.v ? b : a; });
+    if (T(hi.v) > T(lo.v)) ins.push('Your sessions range from ' + f2(lo.v) + ' (' + shortName(lo.s) + ') to ' + f2(hi.v) + ' (' + shortName(hi.s) + ') per shot.');
+  }
+  var bs = bySeriesNo(all).filter(function(r){ return r.n >= 10; });
+  if (bs.length >= 3 && T(bs.reduce(function(a, b){ return Math.max(a, b.avg); }, 0)) > T(bs.reduce(function(a, b){ return Math.min(a, b.avg); }, 99))){
+    var sb = bs.reduce(function(a, b){ return b.avg > a.avg ? b : a; }), sw = bs.reduce(function(a, b){ return b.avg < a.avg ? b : a; });
+    ins.push('Series ' + sb.no + ' is your strongest on average (' + f2(sb.avg) + '), series ' + sw.no + ' the weakest (' + f2(sw.avg) + ').');
+  }
+  var bp = byPosition(all).filter(function(r){ return r.n >= 10; });
+  if (bp.length >= 5){
+    var pw = bp.reduce(function(a, b){ return b.avg < a.avg ? b : a; });
+    if (pw.avg <= pl.avg - 0.1) ins.push('Shot ' + pw.pos + ' of a series is your weakest, averaging ' + f2(pw.avg) + ' against ' + f2(pl.avg) + ' overall.');
+  }
   if (ins.length) h += '<section class="card stack"><h3>What stands out</h3><ul class="ins">' + ins.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section>';
 
-  h += '<section class="card stack"><h3>Series averages</h3>' + dotPlot(c.series.map(function(s){ return {l:'Series ' + s.no, v:s.n >= 3 ? s.avg : null, tip:s.n + ' shots, ' + f1(s.sum) + ' points'}; }), {ref:c.avg, aria:'Average score for each series'}) + '</section>';
+  h += '<section class="card stack"><h3>Where shots land</h3>' + target(pool(all).shots) + byDir(dirStats(all)) + '</section>';
   return h;
-  function row(l, a, b, ch, dd, unit, goodUp, extra){
-    var r = +(+ch).toFixed(dd), cls = r === 0 ? '' : ((r > 0) === goodUp ? 'good' : 'bad');
-    return '<tr><td>' + l + '</td><td>' + a + '</td><td>' + b + '</td><td class="' + cls + '">' + (r === 0 ? '■ ' : r > 0 ? '▲ ' : '▼ ') + signed(ch, dd, unit) + (extra || '') + '</td></tr>';
-  }
+  function rec(l, v, s, extra){ return '<button class="rec" data-act="open" data-id="' + esc(s.id) + '"><span class="lab">' + l + '</span><b>' + v + '</b><span class="small muted">' + esc(shortName(s)) + (extra ? ' · ' + extra : '') + '</span></button>'; }
 }
 
 /* ----- Sessions ----- */
@@ -891,6 +920,8 @@ function viewDetail(s){
   if (s.note) h += '<div class="small ink2">' + esc(s.note) + '</div>';
   h += '</section>';
 
+  var ins = insights(s, c, [s]);
+  if (ins.length) h += '<section class="card stack"><h3>What stands out</h3><ul class="ins">' + ins.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section>';
   h += '<section class="card stack"><h3>Every shot</h3><div class="grid">';
   var by = {}; shotsOf(s).forEach(function(x){ by[x.n] = x; });
   for (var n = 1; n <= c.fired; n++){
@@ -907,8 +938,8 @@ function viewDetail(s){
   h += '<section class="card stack"><h3>Where shots landed</h3>' + target(shotsOf(s)) + byDir(dirStats([s])) + '</section>';
 
   h += '<section class="card stack"><details id="sd-' + esc(s.id) + '"><summary>Session details</summary><div class="stack" style="margin-top:10px">'
-    + '<div class="row"><label class="f grow"><span class="lab">Date</span><input type="date" id="d-date" data-field="s-date" value="' + esc(s.date) + '"></label>'
-    + '<label class="f grow"><span class="lab">Session</span><select id="d-label" data-field="s-label">' + labelOptions(s.label) + '</select></label></div>'
+    + '<div class="pair"><label class="f"><span class="lab">Date</span><input type="date" id="d-date" data-field="s-date" value="' + esc(s.date) + '"></label>'
+    + '<label class="f"><span class="lab">Session</span><select id="d-label" data-field="s-label">' + labelOptions(s.label) + '</select></label></div>'
     + '<div class="row"><label class="f grow"><span class="lab">Shots fired</span><input type="number" inputmode="numeric" id="d-fired" data-field="s-fired" min="1" max="200" value="' + c.fired + '"></label>'
     + '<label class="f grow"><span class="lab">Screen total</span><input type="number" inputmode="decimal" step="0.1" id="d-screen" data-field="s-screen" value="' + (s.screenTotal == null ? '' : s.screenTotal) + '" placeholder="optional"></label></div>'
     + '<label class="f"><span class="lab">Note</span><textarea id="d-note" data-field="s-note" placeholder="Sleep, conditions, what you changed…">' + esc(s.note || '') + '</textarea></label>'
@@ -983,8 +1014,8 @@ function viewScan(){
   var base = target || {id:'', date:S.date, label:S.label, fired:cfg().planned, shots:[], seriesTimes:{}};
   var miss = calc(mergeShots(base, S.shots, S.time), cfg()).missing, dup = alreadySaved(state.sessions, S.shots);
   var h = '<section class="card stack"><div><div class="lab">Scanned scoreboard</div><h2>Check the reading</h2></div>'
-    + '<div class="row"><label class="f grow"><span class="lab">Date on screen</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
-    + '<label class="f grow"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
+    + '<div class="pair"><label class="f"><span class="lab">Date on screen</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
+    + '<label class="f"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
     + (S.dateRead || dup ? '' : '<div class="note">The date on the screen was not readable. Check it before saving.</div>')
     + (dup ? '<div class="check ok">✓ Already saved in ' + esc(nameOf(dup)) + '</div><div class="small ink2">All ' + S.shots.length + ' shots on this photo are saved there with the same scores and arrows, so there is nothing new to save. Change a shot below if the saved one is wrong.</div>' : '');
   var by = {}, gaps = 0; S.shots.forEach(function(x){ by[x.n] = x; });
@@ -1264,9 +1295,8 @@ var handlers = {
     if (state.scan || state.scanBusy){ fade(function(){ state.tab = 'log'; state.openId = null; render(); window.scrollTo(0,0); }); return; }
     document.getElementById('scan').click();
   },
-  cmp:function(el){ state.cmp = el.dataset.v; render(); },
   metric:function(el){ state.metric = el.dataset.v; render(); },
-  open:function(el){ var id = el.dataset.id; fade(function(){ state.openId = id; state.confirm = null; render(); window.scrollTo(0,0); }); },
+  open:function(el){ var id = el.dataset.id; fade(function(){ state.tab = 'sessions'; state.openId = id; state.confirm = null; render(); window.scrollTo(0,0); }); },
   back:function(){ fade(function(){ state.openId = null; render(); }); },
   whole:function(el){ var P = padTarget(); P.whole = +el.dataset.v; render(); },
   dec:function(el){ var P = padTarget(); P.dec = +el.dataset.v; render(); },
@@ -1306,7 +1336,7 @@ var handlers = {
   'del-session':function(el){ removeSession(el.dataset.id); state.openId = null; state.confirm = null; if (state.log.active === el.dataset.id) state.log.active = null; render(); toast('Session deleted'); },
   'ask-wipe':function(){ state.confirm = 'wipe'; render(); setTimeout(function(){ if (state.confirm === 'wipe'){ state.confirm = null; render(); } }, 5000); },
   wipe:function(){ state.sessions.slice().forEach(function(s){ removeSession(s.id); }); state.confirm = null; state.openId = null; state.log.active = null; render(); toast('All sessions deleted'); },
-  'do-import':function(){ var p = state.preview; p.sessions.forEach(function(s){ var old = getSession(s.id); if (old){ s.createdAt = old.createdAt; if (!s.note) s.note = old.note || ''; } persist(s); }); state.preview = null; toast(p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + ' added'); state.tab = 'summary'; state.focusId = null; render(); window.scrollTo(0,0); },
+  'do-import':function(){ var p = state.preview; p.sessions.forEach(function(s){ var old = getSession(s.id); if (old){ s.createdAt = old.createdAt; if (!s.note) s.note = old.note || ''; } persist(s); }); state.preview = null; toast(p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + ' added'); state.tab = 'summary'; render(); window.scrollTo(0,0); },
   'cancel-import':function(){ state.preview = null; render(); },
   'move-stray':function(){ state.stray.forEach(function(s){ persist(s); }); lsSet(LS_LOCAL, []); var n = state.stray.length; state.stray = []; toast(n + ' moved to your account'); render(); },
   'x-csv':function(){ offerFile('raptor-shots.csv', toCSV(shotRows())); },
@@ -1339,8 +1369,7 @@ document.addEventListener('change', function(e){
   }
   if (!f) return;
   var s = state.openId ? getSession(state.openId) : null;
-  if (f === 'focus'){ state.focusId = el.value; render(); }
-  else if (f === 'c-tens' || f === 'c-mark' || f === 'c-plan'){
+  if (f === 'c-tens' || f === 'c-mark' || f === 'c-plan'){
     var v = +el.value; if (!isFinite(v) || v <= 0) return;
     if (f === 'c-tens') state.cfg.tens = v; if (f === 'c-mark') state.cfg.mark = v; if (f === 'c-plan') state.cfg.planned = Math.round(v);
     saveCfg(); render();
