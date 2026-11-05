@@ -76,3 +76,45 @@ test('shotRanges compresses runs', () => {
   assert.equal(M.shotRanges([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 21, 22, 23, 40]), '1–10, 21–23, 40');
   assert.equal(M.shotRanges([]), '');
 });
+
+const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
+
+test('shotXY puts score as distance and arrow as direction', () => {
+  const c = M.shotXY({ n: 1, s: 10.9, d: '↑' });
+  close(c.x, 0); close(c.y, 0);
+  const r = M.shotXY({ n: 1, s: 9.9, d: '→' });
+  close(r.x, 1); close(r.y, 0);
+  const lo = M.shotXY({ n: 1, s: 8.9, d: '↓' });
+  close(lo.x, 0); close(lo.y, 2); // y grows downward, like the screen
+  assert.equal(M.shotXY({ n: 1, s: 9.5, d: '' }), null);
+});
+
+test('groupBias finds a low-left group', () => {
+  const shots = [9.1, 9.4, 8.8, 9.6, 10.1].map((s, i) => ({ n: i + 1, s, d: i % 2 ? '↓' : '↙' }));
+  const b = M.groupBias(shots);
+  assert.equal(b.n, 5);
+  assert.equal(b.centred, false);
+  assert.ok(b.dir === '↙' || b.dir === '↓', b.dir);
+  assert.equal(b.weak, 4);   // shots under 10 with an arrow
+  assert.equal(b.weakIn, 4); // all within 45° of the bias direction
+});
+
+test('groupBias calls a balanced group centred', () => {
+  const shots = ['↑', '↓', '←', '→', '↗', '↙', '↖', '↘'].map((d, i) => ({ n: i + 1, s: 9.5, d }));
+  assert.equal(M.groupBias(shots).centred, true);
+});
+
+test('groupBias needs 5 shots with arrows', () => {
+  assert.equal(M.groupBias(REAL.slice(0, 4)), null);
+  assert.equal(M.groupBias(REAL.map(x => ({ ...x, d: '' }))), null);
+});
+
+test('usualSeries averages complete series, skipping the one just shot', () => {
+  const full = (no, s) => Array.from({ length: 10 }, (_, i) => ({ n: (no - 1) * 10 + i + 1, s, d: '' }));
+  const a = sess([...full(1, 9), ...full(2, 10)], { id: 'a' });
+  const b = sess([...full(1, 9.5), { n: 11, s: 10, d: '' }], { id: 'b' }); // series 2 incomplete
+  const u = M.usualSeries([a, b], 'b', 1);
+  assert.equal(u.n, 2);
+  close(u.avg, 95);
+  assert.equal(M.usualSeries([a], 'a', 1), null); // only one series left: not enough
+});

@@ -37,16 +37,17 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - Pre-account local data (`raptor_v2_local`) shows up as `state.stray` with a "move to your account" action.
 
 **Scoreboard scan.**
-- `#scan` (Log tab) → `shrink()` (≤1600px JPEG) → `sb.functions.invoke('read-scoreboard')`.
+- `#scan` is one static file input outside the re-rendered areas (so an open picker survives a re-render). The centre tab-bar button and "Scan scoreboard" buttons call `scan-pick`, which clicks it → `startScan` → `shrink()` (≤1600px JPEG) → `sb.functions.invoke('read-scoreboard')`.
 - The function checks auth and the `bump_scan(60)` daily cap, then tries Gemini models in order (`gemini-3.5-flash`, `-lite`, `flash-latest`), skipping on 503/429/404. `validate.ts` cleans the reply into `{date, time, subtotal, sighter, shots:[{n,s,d}]}`. It stores nothing.
-- `state.scan` drives `viewScan()`, the review screen: editable date and label, a shot grid editable through `editSheet` in scan mode, `scanCheck` against the subtotal, `scanConflicts` outlines, and a sighter override. Nothing is saved until Save (`saveScan` → `mergeShots` → `persist`).
+- `state.scan` drives `viewScan()`, the review screen: editable date and label, a shot grid editable through `editSheet` in scan mode, `scanCheck` against the subtotal, `scanConflicts` outlines, and a sighter override. Nothing is saved until Save (`saveScan` → `mergeShots` → `persist`). Save sets `state.log.result`, and the Scan tab shows `seriesResult()` (series total vs `usualSeries`, mini target).
 
 **UI is string-templated and re-rendered in full.**
-- `render()` rebuilds `#tabs`, `#app` (or `viewAuth()` when signed out) (one `view*()` function per tab: summary, log, sessions, trends, data; Log shows `viewScan()` while `state.scan` is set) and `#modal` (the shot-edit sheet) from `state`, then restores the scroll position.
+- `render()` rebuilds `#tabs`, `#app` (or `viewAuth()` when signed out) (one `view*()` function per tab: summary, sessions, log (labelled Scan, the raised centre button), trends, data; the Scan tab shows `viewScan()` while `state.scan` is set) and `#modal` (the shot-edit sheet) from `state`, then restores the scroll position.
 - All user text must go through `esc()`.
 - Events are delegated at document level. Click: `[data-act]` → `handlers[act](el, e)`. Change: `[data-field]` is handled in one switch inside the `change` listener.
 - To add an action: emit `data-act="x"` in a view and add `handlers.x`.
-- Charts are hand-built inline SVG (`dotPlot`, `bucketBars`, `compass`, `lineChart`). `lineChart` hover data goes through the module-level `chartData`, which is reset on every render and wired up by `bindCharts()`.
+- Charts are hand-built inline SVG (`dotPlot`, `bucketBars`, `compass`, `lineChart`, `target`). `target()` plots shots from `shotXY` (score = distance, arrow = 45° sector, so positions are approximate) with the `groupBias` centroid; `biasText()` turns it into the sentence.
+- Motion: `fade()` wraps tab/session navigation in a View Transition; `[data-count]` numbers count up when `state.countUp` is set; `.pop` plays once on the series result. All are skipped under `prefers-reduced-motion`. `lineChart` hover data goes through the module-level `chartData`, which is reset on every render and wired up by `bindCharts()`.
 - Destructive actions use the "tap again" pattern: `state.confirm` is set, then cleared after 5 s.
 
 **Import/export.**
