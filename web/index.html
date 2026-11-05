@@ -163,6 +163,16 @@ td.good{color:var(--good)} td.bad{color:var(--bad)}
 .cc i{position:absolute;left:0;bottom:0;height:4px;background:var(--accent)}
 .cc.mid{background:var(--soft);justify-content:center}
 
+/* sign-in: card centred in the space below the header */
+body.auth{padding-bottom:0}
+body.auth main{min-height:calc(100vh - 64px - env(safe-area-inset-top,0px));min-height:calc(100svh - 64px - env(safe-area-inset-top,0px));justify-content:center;align-items:center;padding-block:24px}
+.login{width:100%;max-width:420px;border-radius:20px;padding:26px 22px;box-shadow:0 10px 30px rgba(108,29,69,.10),0 1px 3px rgba(108,29,69,.08)}
+.login h2{font-size:24px;text-align:center}
+.login > .small{text-align:center}
+.login input{border-radius:12px}
+.login .btn.primary{border-radius:12px;min-height:48px}
+.login .note{border-radius:0 8px 8px 0}
+
 /* target */
 .tgtw{max-width:320px;width:100%;margin:0 auto}
 .tgtw.sm{max-width:220px}
@@ -1028,11 +1038,11 @@ function viewLog(){
 /* ----- Account ----- */
 function viewAuth(){
   var A = state.auth, msg = A.msg ? '<div class="note">' + esc(A.msg) + '</div>' : '';
-  if (A.mode === 'recover') return '<section class="card stack"><h2>Choose a new password</h2>'
+  if (A.mode === 'recover') return '<section class="card stack login"><h2>Choose a new password</h2>'
     + '<form class="stack" data-submit="a-newpass"><label class="f"><span class="lab">New password</span><input type="password" id="a-pass" autocomplete="new-password" minlength="6" required></label>'
     + '<button class="btn primary block"' + (A.busy ? ' disabled' : '') + '>Save password</button></form>' + msg + '</section>';
   var up = A.mode === 'signup';
-  return '<section class="card stack"><h2>' + (up ? 'Create your account' : 'Sign in') + '</h2>'
+  return '<section class="card stack login"><h2>' + (up ? 'Create your account' : 'Sign in') + '</h2>'
     + '<div class="small ink2">Your sessions are kept in your own account, so today\'s shots are compared with every session before.</div>'
     + '<form class="stack" data-submit="a-submit"><label class="f"><span class="lab">Email</span><input type="email" id="a-email" autocomplete="email" required value="' + esc(A.email) + '"></label>'
     + '<label class="f"><span class="lab">Password</span><input type="password" id="a-pass" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="6" required></label>'
@@ -1366,9 +1376,9 @@ function countUp(){
 function render(){
   var y = window.scrollY, nav = document.querySelector('nav');
   if (!state.user || state.auth.mode === 'recover'){
-    nav.hidden = true; $app.innerHTML = viewAuth(); document.getElementById('modal').innerHTML = ''; setSyncUI(); return;
+    document.body.classList.add('auth'); nav.hidden = true; $app.innerHTML = viewAuth(); document.getElementById('modal').innerHTML = ''; setSyncUI(); return;
   }
-  nav.hidden = false;
+  document.body.classList.remove('auth'); nav.hidden = false;
   document.getElementById('tabs').innerHTML = TABS.map(function(t){
     var cur = state.tab === t[0] ? ' aria-current="page"' : '';
     if (t[0] === 'log') return '<button class="fab" data-act="scan-pick" aria-label="Scan scoreboard"' + cur + '><i>' + ICONS.log + '</i><span>' + t[1] + '</span></button>';
