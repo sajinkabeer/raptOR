@@ -191,6 +191,7 @@ body.auth main{min-height:calc(100vh - 64px - env(safe-area-inset-top,0px));min-
 .tgt{display:block;width:100%;height:auto}
 .tgt .ring{fill:none;stroke:var(--line2);stroke-width:.8}
 .tgt .ring.ten{fill:var(--soft)}
+.tgt .ring.x{fill:var(--accent);fill-opacity:.16;stroke:var(--accent);stroke-width:1.2}
 .tgt .ax{stroke:var(--line);stroke-width:.6}
 .tgt .rl{font-family:var(--mono);font-size:6px;fill:var(--ink3);text-anchor:end}
 .tgt .sd{stroke:var(--card);stroke-width:.6}
@@ -768,12 +769,17 @@ function target(shots, o){
     h += '<circle r="' + rr.toFixed(1) + '" class="ring' + (k === 10 ? ' ten' : '') + '"/>';
     if (k < 10) h += '<text x="' + (rr - 5).toFixed(1) + '" y="3.5" class="rl">' + k + '</text>';
   }
+  var mk = T(cfg().mark);
+  if (mk > 100 && mk < 109) h += '<circle r="' + ((109 - mk)*S/10).toFixed(1) + '" class="ring x"/>';
   h += '<path class="ax" d="M' + (-R) + ' 0H' + R + 'M0 ' + (-R) + 'V' + R + '"/>';
   var dot = pts.length > 60 ? 1.8 : 2.5;
+  // inner 10s drawn last and larger so they stay visible in the crowded centre
+  pts.sort(function(a, b){ return (T(a.x.s) >= mk) - (T(b.x.s) >= mk); });
   pts.forEach(function(q){
+    var x10 = T(q.x.s) >= mk;
     // spread shots sharing an arrow a little, so they don't stack (angle is ±22° anyway)
     var a = (DIR_ANGLE[q.x.d] + ((q.x.n*7) % 9 - 4)*4)*Math.PI/180, r = Math.hypot(q.p.x, q.p.y)*S;
-    h += '<circle class="sd h' + tier(q.x.s) + '" r="' + dot + '" cx="' + (r*Math.sin(a)).toFixed(1) + '" cy="' + (-r*Math.cos(a)).toFixed(1) + '"><title>Shot ' + q.x.n + ': ' + f1(q.x.s) + ' ' + q.x.d + '</title></circle>';
+    h += '<circle class="sd h' + tier(q.x.s) + '" r="' + (x10 ? dot*1.6 : dot) + '" cx="' + (r*Math.sin(a)).toFixed(1) + '" cy="' + (-r*Math.cos(a)).toFixed(1) + '"><title>Shot ' + q.x.n + ': ' + f1(q.x.s) + (x10 ? ' inner 10' : '') + ' ' + q.x.d + '</title></circle>';
   });
   if (b && !b.centred){
     var gx = (b.cx*S).toFixed(1), gy = (b.cy*S).toFixed(1);
@@ -866,7 +872,7 @@ function viewSummary(){
   h += '<div class="tiles">'
     + '<div class="tile"><div class="lab">Average</div><div class="v">' + num(pl.avg, 2) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '<div class="muted small" style="margin-top:4px">per shot</div></div>'
     + '<div class="tile"><div class="lab">Tens</div><div class="v">' + num(pl.tensPct, 1) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '<div class="muted small" style="margin-top:4px">' + pl.tensN + ' of ' + pl.n + '</div></div>'
-    + '<div class="tile"><div class="lab">60-shot pace</div><div class="v">' + num(pl.pace, 1) + '</div>' + (d ? chip(d.pace, 1, '', true) : '') + '<div class="muted small" style="margin-top:4px">average × 60</div></div></div>';
+    + '<div class="tile"><div class="lab">Inner 10s</div><div class="v">' + num(pl.markPct, 1) + '<small>%</small></div>' + (d ? chip(d.markPts, 1, ' pts', true) : '') + '<div class="muted small" style="margin-top:4px">' + pl.markN + ' of ' + pl.n + ' at ' + f1(C.mark) + '+</div></div></div>';
   h += '<div class="muted small">' + (d ? 'Arrows show recent form: your last ' + (k > 1 ? k + ' sessions' : 'session') + ' against the ' + (ne > 1 ? ne + ' before' : 'one before') + '.' : 'Recent-form arrows appear once 2 sessions have at least 10 shots.') + '</div></section>';
 
   if (full.length >= 2){
