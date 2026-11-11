@@ -1,0 +1,7 @@
+// Cloudflare Workers Builds deploys this on every push to main; other branches get preview URLs.
+// Static files only: everything in web/ is served as-is, no build step.
+{
+  "name": "raptor",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./web" }
+}
