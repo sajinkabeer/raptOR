@@ -430,6 +430,16 @@ function mergeShots(session, shots, time){
   if (time) shots.forEach(function(x){ var k = seriesNo(x.n); if (!s.seriesTimes[k]) s.seriesTimes[k] = time; });
   return s;
 }
+// Manual entry: the shot number after the last one saved in a session (1 for a new session).
+function nextShotNo(session){
+  return shotsOf(session || {shots:[]}).reduce(function(m, x){ return Math.max(m, x.n); }, 0) + 1;
+}
+// Renumber a run of hand-entered shots so the first one is shot `start`, keeping their order and gaps.
+function shiftShots(shots, start){
+  if (!shots.length) return [];
+  var d = start - shots[0].n;
+  return shots.map(function(x){ return {n:x.n + d, s:x.s, d:x.d || ''}; });
+}
 function shotRanges(ns){
   var out = [];
   for (var i = 0; i < ns.length; i++){
@@ -706,7 +716,7 @@ function chip(v, d, unit, goodUp, extra){
 function emptyState(){
   return '<div class="card empty"><svg viewBox="0 0 36 36" fill="none" aria-hidden="true"><circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="18" r="10" stroke="currentColor"/><circle cx="18" cy="18" r="4" stroke="currentColor"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/></svg>'
     + '<h2>No sessions yet</h2><div class="muted small" style="max-width:34ch">Scan a scoreboard photo, or bring in your spreadsheet. Tens %, average and change since your last session appear here.</div>'
-    + '<div class="row" style="justify-content:center"><button class="btn primary" data-act="scan-pick">Scan scoreboard</button><button class="btn" data-act="tab" data-v="data">Import spreadsheet</button></div></div>';
+    + '<div class="row" style="justify-content:center"><button class="btn primary" data-act="scan-pick">Scan scoreboard</button><button class="btn" data-act="manual">Enter by hand</button><button class="btn" data-act="tab" data-v="data">Import spreadsheet</button></div></div>';
 }
 
 function dotPlot(rows, o){
@@ -916,7 +926,7 @@ function viewSummary(){
 function viewSessions(){
   if (state.openId){ var s = getSession(state.openId); if (s) return viewDetail(s); state.openId = null; }
   var list = sorted(); if (!list.length) return emptyState();
-  var h = '<div class="lab">' + list.length + ' session' + (list.length > 1 ? 's' : '') + ' · newest first</div>';
+  var h = '<div class="row between"><div class="lab">' + list.length + ' session' + (list.length > 1 ? 's' : '') + ' · newest first</div><button class="btn sm" data-act="manual">+ Enter shots</button></div>';
   list.slice().reverse().forEach(function(s){
     var i = list.indexOf(s), c = calc(s, cfg()), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
     h += '<button class="srow" data-act="open" data-id="' + esc(s.id) + '"><b>' + esc(nameOf(s)) + '</b><div class="st"><span>' + c.n + ' shots</span><span>' + f1(c.sum) + ' pts</span><span>' + f2(c.avg) + ' avg</span><span>' + f1(c.tensPct) + '% tens</span></div>'
@@ -926,7 +936,7 @@ function viewSessions(){
 }
 function viewDetail(s){
   var c = calc(s, cfg()), list = sorted(), i = list.indexOf(s), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
-  var h = '<div class="row between"><button class="btn sm" data-act="back">← All sessions</button></div>';
+  var h = '<div class="row between"><button class="btn sm" data-act="back">← All sessions</button><button class="btn sm" data-act="manual" data-id="' + esc(s.id) + '">+ Add shots</button></div>';
   h += '<section class="card stack"><div class="row between"><h2>' + esc(nameOf(s)) + '</h2><span class="pill">' + c.n + ' / ' + c.fired + ' shots</span></div>'
     + '<div class="tiles"><div class="tile"><div class="lab">Tens</div><div class="v">' + f1(c.tensPct) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '</div>'
     + '<div class="tile"><div class="lab">Average</div><div class="v">' + f2(c.avg) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '</div>'
@@ -1021,10 +1031,49 @@ function readout(P){ return (P.whole == null ? '–' : P.whole) + '.' + (P.dec =
 function scanCard(){
   var b = state.scanBusy;
   return '<section class="card stack"><button class="btn primary block" data-act="scan-pick"' + (b ? ' disabled' : '') + '>' + (b ? 'Reading photo…' : state.log.result ? 'Scan next series' : 'Scan scoreboard') + '</button>'
-    + '<div class="muted small">Take a photo or choose one from your photos or files. One photo per series; you check every shot before it is saved.</div></section>';
+    + '<div class="muted small">Take a photo or choose one from your photos or files. One photo per series; you check every shot before it is saved.</div>'
+    + '<button class="btn block" data-act="manual"' + (b ? ' disabled' : '') + '>Enter shots by hand</button></section>';
 }
 function scanTarget(S){ return getSession(makeId(S.date, S.separate ? 'Other' : S.label)); }
+// The shot the keypad adds next: right after the last entered shot, or the chosen first shot.
+function manualNext(S){ return S.shots.length ? S.shots[S.shots.length-1].n + 1 : S.start; }
+function viewManual(){
+  var S = state.scan, target = scanTarget(S), main = getSession(makeId(S.date, S.label));
+  var hit = {}; scanConflicts(target, S.shots).forEach(function(n){ hit[n] = 1; });
+  var next = manualNext(S), chk = scanCheck(S.shots, null), canSave = S.date && S.shots.length;
+  var h = '<section class="card stack"><div><div class="lab">Enter by hand</div><h2>Add shots</h2></div>'
+    + '<div class="pair"><label class="f"><span class="lab">Date</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
+    + '<label class="f"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
+    + '<label class="f"><span class="lab">First shot number</span><input type="number" inputmode="numeric" min="1" max="200" data-field="scan-start" value="' + S.start + '"></label>';
+  if (target && !S.separate && shotsOf(target).length) h += '<div class="muted small">' + esc(nameOf(target)) + ' already has ' + shotsOf(target).length + ' shot' + (shotsOf(target).length === 1 ? '' : 's') + '. New shots are added to it.</div>';
+  h += '<div class="grid">';
+  S.shots.forEach(function(x){
+    h += '<button class="cell t' + tier(x.s) + (hit[x.n] ? ' conflict' : '') + '" data-act="scan-edit" data-n="' + x.n + '" aria-label="Shot ' + x.n + ', ' + f1(x.s) + (x.d ? ', ' + x.d : ', no direction') + '"><span class="no">' + x.n + '</span>' + f1(x.s) + (x.d ? arrow(x.d, 16) : '<span class="arw">–</span>') + '</button>';
+  });
+  h += '<button class="cell gap" data-act="scan-edit" data-n="' + next + '" aria-label="Add shot ' + next + '"><span class="no">' + next + '</span>+</button></div>';
+  if (S.shots.length){
+    var k = seriesNo(S.shots[S.shots.length-1].n);
+    h += '<div class="row between small"><span class="ink2">' + S.shots.length + ' shot' + (S.shots.length === 1 ? '' : 's') + ' · total <b class="mono">' + f1(chk.sum) + '</b> · avg <span class="mono">' + f2(chk.sum/S.shots.length) + '</span></span>'
+      + (next - 1 < k*10 ? '<button class="btn sm" data-act="manual-skip" data-n="' + (k*10 + 1) + '">Start series ' + (k+1) + ' →</button>' : '') + '</div>';
+  }
+  h += '<div class="muted small">Tap + to add the next shot, or tap a shot to change it.</div>';
+  if (scanConflicts(main, S.shots).length) h += '<div class="note">Some of these shots are already saved in ' + esc(nameOf(main)) + ' with different values (outlined).</div>'
+    + '<div class="seg" role="group" aria-label="Saved shots"><button data-act="scan-sep" data-v="0" aria-pressed="' + !S.separate + '">Replace saved shots</button><button data-act="scan-sep" data-v="1" aria-pressed="' + !!S.separate + '">Save as separate session (Other)</button></div>';
+  h += '<div class="row"><button class="btn primary grow" data-act="scan-save"' + (canSave ? '' : ' disabled') + '>Save ' + S.shots.length + ' shot' + (S.shots.length === 1 ? '' : 's') + '</button>'
+    + (S.shots.length && state.confirm !== 'manual-discard' ? '<button class="btn" data-act="manual-ask-discard">Discard</button>'
+      : state.confirm === 'manual-discard' ? '<button class="btn danger" data-act="scan-discard">Tap again to discard</button>' : '<button class="btn" data-act="scan-discard">Cancel</button>') + '</div></section>';
+  return h;
+}
+function startManual(date, label){
+  var act = state.log.active && getSession(state.log.active), d = date || todayISO();
+  var l = label || (act && act.date === d ? act.label : labelFromTime(nowHM()));
+  var S = {manual:true, date:d, dateRead:true, time:null, label:l, subtotal:null, sighter:false, shots:[], separate:false, override:false, series:[]};
+  S.start = nextShotNo(getSession(makeId(d, l)));
+  state.scan = S; state.confirm = null; state.log.result = null;
+  state.edit = {scan:true, manual:true, n:S.start, whole:null, dec:null, dir:'', exists:false};
+}
 function viewScan(){
+  if (state.scan.manual) return viewManual();
   var S = state.scan, target = scanTarget(S), main = getSession(makeId(S.date, S.label));
   var hit = {}; scanConflicts(target, S.shots).forEach(function(n){ hit[n] = 1; });
   var chk = scanCheck(S.shots, S.subtotal), canSave = S.date && S.shots.length && (!S.sighter || S.override);
@@ -1076,7 +1125,7 @@ function viewLog(){
   h += scanCard();
   if (s){
     var c = calc(s, cfg());
-    h += '<section class="card stack"><div class="row between"><div><div class="lab">Last scanned</div><h2>' + esc(nameOf(s)) + '</h2></div><span class="pill">' + c.n + ' / ' + c.fired + ' shots</span></div>'
+    h += '<section class="card stack"><div class="row between"><div><div class="lab">Last logged</div><h2>' + esc(nameOf(s)) + '</h2></div><span class="pill">' + c.n + ' / ' + c.fired + ' shots</span></div>'
       + (c.missing.length ? '<div class="muted small">Not logged yet: shots ' + shotRanges(c.missing) + '.</div>' : '<div class="check ok">✓ All ' + c.fired + ' shots logged</div>')
       + '<button class="btn block" data-act="open-log">View session</button></section>';
   }
@@ -1270,7 +1319,12 @@ async function startScan(file){
   finally { clearTimeout(slow); state.scanBusy = false; state.scanSlow = false; render(); }
 }
 function saveScan(){
-  var S = state.scan, label = S.separate ? 'Other' : S.label, id = makeId(S.date, label);
+  var S = state.scan;
+  if (S.manual){
+    S.series = S.shots.map(function(x){ return seriesNo(x.n); }).filter(function(k, i, a){ return a.indexOf(k) === i; });
+    S.time = S.date === todayISO() ? nowHM() : null;
+  }
+  var label = S.separate ? 'Other' : S.label, id = makeId(S.date, label);
   var t = getSession(id) || {id:id, date:S.date, label:label, fired:cfg().planned, shots:[], seriesTimes:{}, screenTotal:null, note:'', createdAt:Date.now()};
   var m = mergeShots(t, S.shots, S.time); persist(m);
   state.log.active = id; state.log.result = {id:id, nos:S.series.slice(), pop:true}; state.countUp = true;
@@ -1325,20 +1379,29 @@ var handlers = {
   'open-log':function(){ state.openId = state.log.active; state.tab = 'sessions'; render(); window.scrollTo(0,0); },
   'scan-edit':function(el){
     var n = +el.dataset.n, x = state.scan.shots.filter(function(y){ return y.n === n; })[0];
-    state.edit = x ? {scan:true, n:n, whole:Math.floor(T(x.s)/10), dec:T(x.s)%10, dir:x.d || '', exists:true}
-                   : {scan:true, n:n, whole:null, dec:null, dir:'', exists:false};
+    state.edit = x ? {scan:true, manual:!!state.scan.manual, n:n, whole:Math.floor(T(x.s)/10), dec:T(x.s)%10, dir:x.d || '', exists:true}
+                   : {scan:true, manual:!!state.scan.manual, n:n, whole:null, dec:null, dir:'', exists:false};
     render();
   },
   'scan-sep':function(el){ state.scan.separate = el.dataset.v === '1'; render(); },
   'scan-save':function(){ saveScan(); render(); window.scrollTo(0,0); },
-  'scan-discard':function(){ state.scan = null; render(); },
+  'scan-discard':function(){ state.scan = null; state.confirm = null; render(); },
+  manual:function(el){
+    var s = el.dataset.id && getSession(el.dataset.id);
+    if (state.scan && !state.scan.manual){ toast('Save or discard the scanned reading first'); fade(function(){ state.tab = 'log'; state.openId = null; render(); window.scrollTo(0,0); }); return; }
+    fade(function(){ if (!state.scan) startManual(s && s.date, s && s.label); state.tab = 'log'; state.openId = null; render(); window.scrollTo(0,0); });
+  },
+  'manual-skip':function(el){ state.edit = {scan:true, manual:true, n:+el.dataset.n, whole:null, dec:null, dir:'', exists:false}; render(); },
+  'manual-ask-discard':function(){ state.confirm = 'manual-discard'; render(); setTimeout(function(){ if (state.confirm === 'manual-discard'){ state.confirm = null; render(); } }, 5000); },
   'edit-save':function(){
     var E = state.edit;
     if (E.scan){
       if (E.whole == null || E.dec == null){ toast('Pick a whole number and a decimal'); return; }
       var v = (E.whole*10 + E.dec)/10; if (v > 10.9){ toast('The highest score is 10.9'); return; }
       state.scan.shots = state.scan.shots.filter(function(x){ return x.n !== E.n; }).concat([{n:E.n, s:v, d:E.dir || ''}]).sort(function(a, b){ return a.n - b.n; });
-      state.edit = null; render(); return;
+      // By hand, a new shot moves the keypad on to the next one so a series can be typed in one go.
+      state.edit = E.manual && !E.exists ? {scan:true, manual:true, n:manualNext(state.scan), whole:null, dec:null, dir:'', exists:false} : null;
+      render(); return;
     }
     var s = getSession(E.id); if (E.whole == null || E.dec == null){ toast('Pick a whole number and a decimal'); return; }
     var sc = (E.whole*10 + E.dec)/10; if (sc > 10.9){ toast('The highest score is 10.9'); return; }
@@ -1377,8 +1440,12 @@ document.addEventListener('click', function(e){
 document.addEventListener('change', function(e){
   var el = e.target, f = el.dataset && el.dataset.field;
   if (el.id === 'scan' && el.files && el.files[0]){ startScan(el.files[0]); el.value = ''; return; }
-  if (state.scan && f === 'scan-date'){ if (el.value){ state.scan.date = el.value; state.scan.dateRead = true; } render(); return; }
-  if (state.scan && f === 'scan-label'){ state.scan.label = el.value; render(); return; }
+  if (state.scan && f === 'scan-date'){ if (el.value){ state.scan.date = el.value; state.scan.dateRead = true; if (state.scan.manual && !state.scan.shots.length) state.scan.start = nextShotNo(getSession(makeId(el.value, state.scan.label))); } render(); return; }
+  if (state.scan && f === 'scan-label'){ state.scan.label = el.value; if (state.scan.manual && !state.scan.shots.length) state.scan.start = nextShotNo(getSession(makeId(state.scan.date, el.value))); render(); return; }
+  if (state.scan && f === 'scan-start'){
+    var st = Math.round(+el.value); if (!(st >= 1 && st <= 200)){ render(); return; }
+    state.scan.start = st; state.scan.shots = shiftShots(state.scan.shots, st); render(); return;
+  }
   if (state.scan && f === 'scan-override'){ state.scan.override = el.checked; render(); return; }
   if (el.id === 'file' && el.files && el.files[0]){
     readFile(el.files[0]).then(function(p){ state.preview = p; render(); }).catch(function(err){ console.error(err); toast('Could not read that file'); });
@@ -1405,10 +1472,12 @@ document.addEventListener('change', function(e){
 /* ---------- render ---------- */
 function editSheet(){
   var E = state.edit; if (!E) return '';
-  var title = E.scan ? 'Scanned reading' : nameOf(getSession(E.id));
+  var title = E.manual ? 'Enter by hand' : E.scan ? 'Scanned reading' : nameOf(getSession(E.id));
+  var adding = E.manual && !E.exists, n = adding ? state.scan.shots.length : 0;
   return '<div class="scrim" data-act="edit-close"><div class="sheet" role="dialog" aria-label="Edit shot">'
     + '<div class="row between"><div><div class="lab">' + esc(title) + '</div><h2>Shot ' + E.n + ' <span class="muted" style="font-weight:400;font-size:15px">· series ' + seriesNo(E.n) + '</span></h2></div><div class="read mono" style="font-size:36px">' + readout(E) + '</div></div>'
-    + pads(E) + '<div class="row"><button class="btn primary grow" data-act="edit-save">Save shot</button>' + (E.exists ? '<button class="btn danger" data-act="edit-del">Delete</button>' : '') + '<button class="btn" data-act="edit-close">Cancel</button></div></div></div>';
+    + pads(E) + (adding && n ? '<div class="muted small">' + n + ' shot' + (n === 1 ? '' : 's') + ' entered · total ' + f1(scanCheck(state.scan.shots, null).sum) + '</div>' : '')
+    + '<div class="row"><button class="btn primary grow" data-act="edit-save">' + (adding ? 'Add shot' : 'Save shot') + '</button>' + (E.exists ? '<button class="btn danger" data-act="edit-del">Delete</button>' : '') + '<button class="btn" data-act="edit-close">' + (adding ? 'Done' : 'Cancel') + '</button></div></div></div>';
 }
 function reduced(){ return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
 function fade(fn){ if (document.startViewTransition && !reduced()) document.startViewTransition(fn); else fn(); }

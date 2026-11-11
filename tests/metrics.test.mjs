@@ -159,3 +159,16 @@ test('records picks best average, tens, series and tightest session', () => {
   assert.equal(r.tightest.s.id, 's2');
   assert.equal(M.records([tiny]), null);
 });
+
+test('nextShotNo continues after the last saved shot', () => {
+  assert.equal(M.nextShotNo(null), 1);
+  assert.equal(M.nextShotNo(sess([])), 1);
+  assert.equal(M.nextShotNo(sess(REAL)), 21);
+  assert.equal(M.nextShotNo(sess([{ n: 3, s: 9 }, { n: 1, s: 10 }])), 4);
+});
+
+test('shiftShots renumbers from a new first shot, keeping gaps', () => {
+  assert.deepEqual(M.shiftShots([], 5), []);
+  const out = M.shiftShots([{ n: 1, s: 10.1, d: '↑' }, { n: 2, s: 9 }, { n: 11, s: 8.5, d: '' }], 21);
+  assert.deepEqual(out, [{ n: 21, s: 10.1, d: '↑' }, { n: 22, s: 9, d: '' }, { n: 31, s: 8.5, d: '' }]);
+});
