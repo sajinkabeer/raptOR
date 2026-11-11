@@ -172,3 +172,20 @@ test('shiftShots renumbers from a new first shot, keeping gaps', () => {
   const out = M.shiftShots([{ n: 1, s: 10.1, d: '↑' }, { n: 2, s: 9 }, { n: 11, s: 8.5, d: '' }], 21);
   assert.deepEqual(out, [{ n: 21, s: 10.1, d: '↑' }, { n: 22, s: 9, d: '' }, { n: 31, s: 8.5, d: '' }]);
 });
+
+test('rifleText and parseRifle round-trip', () => {
+  assert.equal(M.rifleText({ rifleMake: 'Walther', rifleNo: 'R17' }), 'Walther R17');
+  assert.equal(M.rifleText({ rifleMake: '', rifleNo: 'R1' }), 'R1');
+  assert.equal(M.rifleText({}), '');
+  assert.deepEqual(M.parseRifle('Walther R17'), { make: 'Walther', no: 'R17' });
+  assert.deepEqual(M.parseRifle('Feinwerkbau R18'), { make: 'Feinwerkbau', no: 'R18' });
+  assert.deepEqual(M.parseRifle('fwb r2'), { make: 'Feinwerkbau', no: 'r2' });
+  assert.deepEqual(M.parseRifle('R5'), { make: '', no: 'R5' });
+  assert.deepEqual(M.parseRifle(null), { make: '', no: '' });
+  assert.deepEqual(M.RIFLES, ['Walther', 'Feinwerkbau']);
+});
+
+test('lastRifle takes the latest session with a rifle', () => {
+  assert.deepEqual(M.lastRifle([]), { make: '', no: '' });
+  assert.deepEqual(M.lastRifle([{ rifleMake: 'Walther', rifleNo: 'R1' }, { rifleMake: 'Feinwerkbau', rifleNo: 'R18' }, {}]), { make: 'Feinwerkbau', no: 'R18' });
+});

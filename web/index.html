@@ -430,6 +430,21 @@ function mergeShots(session, shots, time){
   if (time) shots.forEach(function(x){ var k = seriesNo(x.n); if (!s.seriesTimes[k]) s.seriesTimes[k] = time; });
   return s;
 }
+// Rifle: a make from RIFLES ('' when not set) plus a free-text number like R17.
+var RIFLES = ['Walther','Feinwerkbau'];
+function rifleText(s){ return [s && s.rifleMake, s && s.rifleNo].filter(function(v){ return v; }).join(' '); }
+// Reads "Walther R17", "FWB R1" or just "R18" back into {make, no}.
+function parseRifle(v){
+  var t = String(v == null ? '' : v).trim(), make = '';
+  var m = t.match(/^(walther|feinwerkbau|feinwerk\s*bau|fwb)(?![a-z])\s*/i);
+  if (m){ make = /walther/i.test(m[1]) ? 'Walther' : 'Feinwerkbau'; t = t.slice(m[0].length); }
+  return {make:make, no:t.trim()};
+}
+// The rifle of the latest session that has one (list is chronological), to prefill new entries.
+function lastRifle(list){
+  for (var i = list.length - 1; i >= 0; i--) if (list[i].rifleMake || list[i].rifleNo) return {make:list[i].rifleMake || '', no:list[i].rifleNo || ''};
+  return {make:'', no:''};
+}
 // Manual entry: the shot number after the last one saved in a session (1 for a new session).
 function nextShotNo(session){
   return shotsOf(session || {shots:[]}).reduce(function(m, x){ return Math.max(m, x.n); }, 0) + 1;
@@ -576,17 +591,17 @@ function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(
 function plain(s){
   return JSON.parse(JSON.stringify({
     id:s.id, date:s.date, label:s.label, fired:s.fired || 0, shots:s.shots || [], seriesTimes:s.seriesTimes || {},
-    screenTotal:s.screenTotal == null ? null : s.screenTotal, note:s.note || '', createdAt:s.createdAt || Date.now(), updatedAt:s.updatedAt || Date.now()
+    screenTotal:s.screenTotal == null ? null : s.screenTotal, note:s.note || '', rifleMake:s.rifleMake || '', rifleNo:s.rifleNo || '', createdAt:s.createdAt || Date.now(), updatedAt:s.updatedAt || Date.now()
   }));
 }
 function toRow(s){
   var p = plain(s);
   return {user_id:state.user.id, id:p.id, date:p.date, label:p.label, fired:p.fired, shots:p.shots, series_times:p.seriesTimes,
-    screen_total:p.screenTotal, note:p.note, created_at:p.createdAt, updated_at:p.updatedAt};
+    screen_total:p.screenTotal, note:p.note, rifle_make:p.rifleMake, rifle_no:p.rifleNo, created_at:p.createdAt, updated_at:p.updatedAt};
 }
 function fromRow(r){
   return {id:r.id, date:r.date, label:r.label, fired:+r.fired || 0, shots:r.shots || [], seriesTimes:r.series_times || {},
-    screenTotal:r.screen_total == null ? null : +r.screen_total, note:r.note || '', createdAt:+r.created_at, updatedAt:+r.updated_at};
+    screenTotal:r.screen_total == null ? null : +r.screen_total, note:r.note || '', rifleMake:r.rifle_make || '', rifleNo:r.rifle_no || '', createdAt:+r.created_at, updatedAt:+r.updated_at};
 }
 // Write-ahead: every change lands in localStorage first with a pending mark; flush() uploads and clears marks.
 var pending = {}, timers = {}, flushing = false, retryTimer = null;
@@ -929,7 +944,7 @@ function viewSessions(){
   var h = '<div class="row between"><div class="lab">' + list.length + ' session' + (list.length > 1 ? 's' : '') + ' · newest first</div><button class="btn sm" data-act="manual">+ Enter shots</button></div>';
   list.slice().reverse().forEach(function(s){
     var i = list.indexOf(s), c = calc(s, cfg()), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
-    h += '<button class="srow" data-act="open" data-id="' + esc(s.id) + '"><b>' + esc(nameOf(s)) + '</b><div class="st"><span>' + c.n + ' shots</span><span>' + f1(c.sum) + ' pts</span><span>' + f2(c.avg) + ' avg</span><span>' + f1(c.tensPct) + '% tens</span></div>'
+    h += '<button class="srow" data-act="open" data-id="' + esc(s.id) + '"><b>' + esc(nameOf(s)) + '</b><div class="st">' + (rifleText(s) ? '<span>' + esc(rifleText(s)) + '</span>' : '') + '<span>' + c.n + ' shots</span><span>' + f1(c.sum) + ' pts</span><span>' + f2(c.avg) + ' avg</span><span>' + f1(c.tensPct) + '% tens</span></div>'
       + '<div class="go">' + (d ? chip(d.avgPct, 1, '%', true) : '<span class="pill">first</span>') + (c.missing.length ? '<span class="pill">' + c.missing.length + ' missing</span>' : '') + '</div></button>';
   });
   return h;
@@ -938,6 +953,7 @@ function viewDetail(s){
   var c = calc(s, cfg()), list = sorted(), i = list.indexOf(s), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
   var h = '<div class="row between"><button class="btn sm" data-act="back">← All sessions</button><button class="btn sm" data-act="manual" data-id="' + esc(s.id) + '">+ Add shots</button></div>';
   h += '<section class="card stack"><div class="row between"><h2>' + esc(nameOf(s)) + '</h2><span class="pill">' + c.n + ' / ' + c.fired + ' shots</span></div>'
+    + rifleField(s.rifleMake, s.rifleNo, 's')
     + '<div class="tiles"><div class="tile"><div class="lab">Tens</div><div class="v">' + f1(c.tensPct) + '<small>%</small></div>' + (d ? chip(d.tensPts, 1, ' pts', true) : '') + '</div>'
     + '<div class="tile"><div class="lab">Average</div><div class="v">' + f2(c.avg) + '</div>' + (d ? chip(d.avgPct, 1, '%', true) : '') + '</div>'
     + '<div class="tile"><div class="lab">Total</div><div class="v">' + f1(c.sum) + '</div><div class="muted small" style="margin-top:6px">' + (c.screenTotal != null ? 'screen ' + f1(c.screenTotal) : 'logged') + '</div></div></div>'
@@ -973,6 +989,12 @@ function viewDetail(s){
     + (state.confirm === 'del-' + s.id ? '<button class="btn danger block" data-act="del-session" data-id="' + esc(s.id) + '">Tap again to delete this session</button>' : '<button class="btn danger block" data-act="ask-del" data-id="' + esc(s.id) + '">Delete session</button>')
     + '</div></details></section>';
   return h;
+}
+// Make buttons plus a typed rifle number; to = 's' (open session) or 'scan' (scan/manual review).
+function rifleField(make, no, to){
+  return '<div class="f"><span class="lab">Rifle</span><div class="seg" role="group" aria-label="Rifle make">'
+    + RIFLES.map(function(r){ return '<button data-act="rifle-make" data-to="' + to + '" data-v="' + r + '" aria-pressed="' + (make === r) + '">' + r + '</button>'; }).join('')
+    + '</div><input type="text" data-field="' + to + '-rifle-no" value="' + esc(no || '') + '" placeholder="Rifle number, e.g. R17" maxlength="20" autocapitalize="characters" autocomplete="off" aria-label="Rifle number" style="margin-top:6px"></div>';
 }
 function labelOptions(cur){
   var opts = LABELS.slice(); if (opts.indexOf(cur) < 0) opts.unshift(cur);
@@ -1044,6 +1066,7 @@ function viewManual(){
   var h = '<section class="card stack"><div><div class="lab">Enter by hand</div><h2>Add shots</h2></div>'
     + '<div class="pair"><label class="f"><span class="lab">Date</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
     + '<label class="f"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
+    + rifleField(S.rifleMake, S.rifleNo, 'scan')
     + '<label class="f"><span class="lab">First shot number</span><input type="number" inputmode="numeric" min="1" max="200" data-field="scan-start" value="' + S.start + '"></label>';
   if (target && !S.separate && shotsOf(target).length) h += '<div class="muted small">' + esc(nameOf(target)) + ' already has ' + shotsOf(target).length + ' shot' + (shotsOf(target).length === 1 ? '' : 's') + '. New shots are added to it.</div>';
   h += '<div class="grid">';
@@ -1064,11 +1087,16 @@ function viewManual(){
       : state.confirm === 'manual-discard' ? '<button class="btn danger" data-act="scan-discard">Tap again to discard</button>' : '<button class="btn" data-act="scan-discard">Cancel</button>') + '</div></section>';
   return h;
 }
+// Prefill the review's rifle from the session it lands in, else from the last rifle used.
+function setScanRifle(S){
+  var t = getSession(makeId(S.date, S.label)), r = t && (t.rifleMake || t.rifleNo) ? {make:t.rifleMake || '', no:t.rifleNo || ''} : lastRifle(sorted());
+  S.rifleMake = r.make; S.rifleNo = r.no;
+}
 function startManual(date, label){
   var act = state.log.active && getSession(state.log.active), d = date || todayISO();
   var l = label || (act && act.date === d ? act.label : labelFromTime(nowHM()));
   var S = {manual:true, date:d, dateRead:true, time:null, label:l, subtotal:null, sighter:false, shots:[], separate:false, override:false, series:[]};
-  S.start = nextShotNo(getSession(makeId(d, l)));
+  S.start = nextShotNo(getSession(makeId(d, l))); setScanRifle(S);
   state.scan = S; state.confirm = null; state.log.result = null;
   state.edit = {scan:true, manual:true, n:S.start, whole:null, dec:null, dir:'', exists:false};
 }
@@ -1082,6 +1110,7 @@ function viewScan(){
   var h = '<section class="card stack"><div><div class="lab">Scanned scoreboard</div><h2>Check the reading</h2></div>'
     + '<div class="pair"><label class="f"><span class="lab">Date on screen</span><input type="date" data-field="scan-date" value="' + esc(S.date) + '"></label>'
     + '<label class="f"><span class="lab">Session</span><select data-field="scan-label">' + labelOptions(S.label) + '</select></label></div>'
+    + rifleField(S.rifleMake, S.rifleNo, 'scan')
     + (S.dateRead || dup ? '' : '<div class="note">The date on the screen was not readable. Check it before saving.</div>')
     + (dup ? '<div class="check ok">✓ Already saved in ' + esc(nameOf(dup)) + '</div><div class="small ink2">All ' + S.shots.length + ' shots on this photo are saved there with the same scores and arrows, so there is nothing new to save. Change a shot below if the saved one is wrong.</div>' : '');
   var by = {}, gaps = 0; S.shots.forEach(function(x){ by[x.n] = x; });
@@ -1213,7 +1242,7 @@ function parseRows(rows, sheetName, out, tally){
   if (hi < 0) return;
   var H = rows[hi].map(normH);
   var col = function(names){ for (var j = 0; j < names.length; j++){ var k = H.indexOf(names[j]); if (k >= 0) return k; } return -1; };
-  var cD = col(['date']), cS = col(['session']), cN = col(['shot no.','shot no','shot','#']), cT = col(['type']), cSc = col(['score']), cDir = col(['direction','dir']), cTm = col(['screen time','time']);
+  var cD = col(['date']), cS = col(['session']), cN = col(['shot no.','shot no','shot','#']), cT = col(['type']), cSc = col(['score']), cDir = col(['direction','dir']), cTm = col(['screen time','time']), cR = col(['rifle']);
   var sheetDate = toISO(sheetName);
   for (var k = hi + 1; k < rows.length; k++){
     var r2 = rows[k] || [];
@@ -1222,6 +1251,7 @@ function parseRows(rows, sheetName, out, tally){
     var id = makeId(date, label);
     var type = cT >= 0 && r2[cT] != null ? String(r2[cT]).trim() : '';
     var get = function(){ return out[id] || (out[id] = {id:id, date:date, label:label, shots:[], seriesTimes:{}, fired:0, screenTotal:null, note:'', createdAt:Date.now()}); };
+    if (cR >= 0 && r2[cR] != null && String(r2[cR]).trim()){ var rs = get(); if (!rs.rifleMake && !rs.rifleNo){ var rf = parseRifle(r2[cR]); rs.rifleMake = rf.make; rs.rifleNo = rf.no; } }
     if (/session total/i.test(type)){
       var total = cSc >= 0 ? r2[cSc] : null, sess = get();
       if (typeof total === 'number') sess.screenTotal = r1(total);
@@ -1258,11 +1288,11 @@ async function readFile(file){
   return {name:name, sessions:sortSessions(sessions), skipped:tally.skipped};
 }
 function shotRows(){
-  var rows = [['Date','Session','Shot no.','Series','Type','Score','Direction','Screen mark','Screen time','Note']];
+  var rows = [['Date','Session','Shot no.','Series','Type','Score','Direction','Screen mark','Screen time','Note','Rifle']];
   sorted().forEach(function(s){
     var c = calc(s, cfg());
-    shotsOf(s).forEach(function(x){ var sn = seriesNo(x.n); rows.push([s.date, s.label, x.n, sn, 'Match', x.s, x.d || '', T(x.s) >= T(cfg().mark), (s.seriesTimes && s.seriesTimes[sn]) || '', '']); });
-    rows.push([s.date, s.label, '', '', 'SESSION TOTAL', s.screenTotal != null ? s.screenTotal : c.sum, '', '', '', 'Screen total, shots 1-' + c.fired + (s.note ? ' (' + s.note + ')' : '')]);
+    shotsOf(s).forEach(function(x){ var sn = seriesNo(x.n); rows.push([s.date, s.label, x.n, sn, 'Match', x.s, x.d || '', T(x.s) >= T(cfg().mark), (s.seriesTimes && s.seriesTimes[sn]) || '', '', rifleText(s)]); });
+    rows.push([s.date, s.label, '', '', 'SESSION TOTAL', s.screenTotal != null ? s.screenTotal : c.sum, '', '', '', 'Screen total, shots 1-' + c.fired + (s.note ? ' (' + s.note + ')' : ''), rifleText(s)]);
   });
   return rows;
 }
@@ -1314,6 +1344,7 @@ async function startScan(file){
     state.scan = {date:date, dateRead:!!d.date, time:d.time, label:act && act.date === date ? act.label : labelFromTime(d.time),
       subtotal:d.subtotal, sighter:!!d.sighter, shots:d.shots, separate:false, override:false,
       series:d.shots.map(function(x){ return seriesNo(x.n); }).filter(function(k, i, a){ return a.indexOf(k) === i; })};
+    setScanRifle(state.scan);
     state.tab = 'log'; state.openId = null; window.scrollTo(0, 0);
   } catch(e){ console.error(e); toast('Could not read that photo. Try again.'); }
   finally { clearTimeout(slow); state.scanBusy = false; state.scanSlow = false; render(); }
@@ -1326,7 +1357,7 @@ function saveScan(){
   }
   var label = S.separate ? 'Other' : S.label, id = makeId(S.date, label);
   var t = getSession(id) || {id:id, date:S.date, label:label, fired:cfg().planned, shots:[], seriesTimes:{}, screenTotal:null, note:'', createdAt:Date.now()};
-  var m = mergeShots(t, S.shots, S.time); persist(m);
+  var m = mergeShots(t, S.shots, S.time); m.rifleMake = S.rifleMake || ''; m.rifleNo = S.rifleNo || ''; persist(m);
   state.log.active = id; state.log.result = {id:id, nos:S.series.slice(), pop:true}; state.countUp = true;
   state.scan = null; toast(S.shots.length + ' shot' + (S.shots.length === 1 ? '' : 's') + ' saved to ' + nameOf(m));
 }
@@ -1391,6 +1422,12 @@ var handlers = {
     if (state.scan && !state.scan.manual){ toast('Save or discard the scanned reading first'); fade(function(){ state.tab = 'log'; state.openId = null; render(); window.scrollTo(0,0); }); return; }
     fade(function(){ if (!state.scan) startManual(s && s.date, s && s.label); state.tab = 'log'; state.openId = null; render(); window.scrollTo(0,0); });
   },
+  'rifle-make':function(el){
+    var o = el.dataset.to === 'scan' ? state.scan : getSession(state.openId); if (!o) return;
+    o.rifleMake = o.rifleMake === el.dataset.v ? '' : el.dataset.v;
+    if (el.dataset.to !== 'scan') persist(o);
+    render();
+  },
   'manual-skip':function(el){ state.edit = {scan:true, manual:true, n:+el.dataset.n, whole:null, dec:null, dir:'', exists:false}; render(); },
   'manual-ask-discard':function(){ state.confirm = 'manual-discard'; render(); setTimeout(function(){ if (state.confirm === 'manual-discard'){ state.confirm = null; render(); } }, 5000); },
   'edit-save':function(){
@@ -1416,7 +1453,7 @@ var handlers = {
   'del-session':function(el){ removeSession(el.dataset.id); state.openId = null; state.confirm = null; if (state.log.active === el.dataset.id) state.log.active = null; render(); toast('Session deleted'); },
   'ask-wipe':function(){ state.confirm = 'wipe'; render(); setTimeout(function(){ if (state.confirm === 'wipe'){ state.confirm = null; render(); } }, 5000); },
   wipe:function(){ state.sessions.slice().forEach(function(s){ removeSession(s.id); }); state.confirm = null; state.openId = null; state.log.active = null; render(); toast('All sessions deleted'); },
-  'do-import':function(){ var p = state.preview; p.sessions.forEach(function(s){ var old = getSession(s.id); if (old){ s.createdAt = old.createdAt; if (!s.note) s.note = old.note || ''; } persist(s); }); state.preview = null; toast(p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + ' added'); state.tab = 'summary'; render(); window.scrollTo(0,0); },
+  'do-import':function(){ var p = state.preview; p.sessions.forEach(function(s){ var old = getSession(s.id); if (old){ s.createdAt = old.createdAt; if (!s.note) s.note = old.note || ''; if (!s.rifleMake && !s.rifleNo){ s.rifleMake = old.rifleMake || ''; s.rifleNo = old.rifleNo || ''; } } persist(s); }); state.preview = null; toast(p.sessions.length + ' session' + (p.sessions.length === 1 ? '' : 's') + ' added'); state.tab = 'summary'; render(); window.scrollTo(0,0); },
   'cancel-import':function(){ state.preview = null; render(); },
   'move-stray':function(){ state.stray.forEach(function(s){ persist(s); }); lsSet(LS_LOCAL, []); var n = state.stray.length; state.stray = []; toast(n + ' moved to your account'); render(); },
   'x-csv':function(){ offerFile('raptor-shots.csv', toCSV(shotRows())); },
@@ -1446,6 +1483,7 @@ document.addEventListener('change', function(e){
     var st = Math.round(+el.value); if (!(st >= 1 && st <= 200)){ render(); return; }
     state.scan.start = st; state.scan.shots = shiftShots(state.scan.shots, st); render(); return;
   }
+  if (state.scan && f === 'scan-rifle-no'){ state.scan.rifleNo = el.value.trim(); return; }
   if (state.scan && f === 'scan-override'){ state.scan.override = el.checked; render(); return; }
   if (el.id === 'file' && el.files && el.files[0]){
     readFile(el.files[0]).then(function(p){ state.preview = p; render(); }).catch(function(err){ console.error(err); toast('Could not read that file'); });
@@ -1466,6 +1504,7 @@ document.addEventListener('change', function(e){
   }
   else if (s && f === 's-fired'){ var n = Math.round(+el.value); if (n > 0){ s.fired = n; persist(s); render(); } }
   else if (s && f === 's-screen'){ s.screenTotal = el.value === '' ? null : r1(+el.value); persist(s); render(); }
+  else if (s && f === 's-rifle-no'){ s.rifleNo = el.value.trim(); persist(s); render(); }
   else if (s && f === 's-note'){ s.note = el.value.trim(); persist(s); }
 });
 

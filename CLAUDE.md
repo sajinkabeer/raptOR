@@ -24,7 +24,7 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 
 **Two script scopes.** The metrics block (`calc`, `compare`, `pool`, `byPosition`, `bySeriesNo`, `dirStats`, `sortSessions`, `niceScale`, `makeId`, …) sits at global scope. Everything else is inside one `'use strict'` IIFE.
 
-**Data model.** A session looks like `{id, date:'YYYY-MM-DD', label, fired, shots:[{n, s, d}], seriesTimes:{seriesNo:'HH:MM'}, screenTotal, note, createdAt, updatedAt}`.
+**Data model.** A session looks like `{id, date:'YYYY-MM-DD', label, fired, shots:[{n, s, d}], seriesTimes:{seriesNo:'HH:MM'}, screenTotal, note, rifleMake, rifleNo, createdAt, updatedAt}`. `rifleMake` is one of `RIFLES` (Walther, Feinwerkbau) or `''`; `rifleNo` is free text like R17 (columns `rifle_make`/`rifle_no`, exported as one `Rifle` column).
 - `id = makeId(date, label)`, so date + label is the identity. Renaming or redating a session deletes the old id and persists a new one (see the `s-date`/`s-label` change handler).
 - `n` is the shot number (1-based). Series = `ceil(n/10)`. `d` is one of the 8 arrow glyphs in `DIRS`, or `''`.
 - `plain(s)` is the canonical serializer. Use it for anything written to storage or exported.
