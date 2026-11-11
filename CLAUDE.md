@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot series, 60-shot matches by default). It is a multi-user web app:
 - `web/index.html` is the whole front end: inline CSS and vanilla ES5-style JS, no build step and no package manager. It loads Google Fonts, SheetJS `xlsx@0.18.5` (cdnjs) and `@supabase/supabase-js@2.117.0` (jsdelivr UMD).
 - `supabase/` holds the backend for project `kmxjerumxxcszvpiiixc`: `migrations/` (tables plus RLS) and `functions/read-scoreboard/` (a Deno Edge Function that reads scoreboard photos with Gemini).
-- Static hosting is Cloudflare Workers Static Assets (`wrangler.jsonc` serves `web/` only), deployed by Workers Builds from GitHub. Design and plan are in `docs/superpowers/`.
+- Static hosting is on Vercel (deploy `web/` only). Design and plan are in `docs/superpowers/`.
 - `web/apple-touch-icon.png` (180×180, opaque, the iOS home-screen icon) and `web/icon.svg` (favicon) are the target logo on Pantone 222. Regenerate the PNG from the SVG with QuickLook (`qlmanage -t -s 180`) and flatten it; headless Chrome renders this SVG wrongly.
 - `.env.local` holds `GEMINI_API_KEY` for local experiments only. The live key is a Supabase secret. Never put it in `web/`.
 
@@ -71,5 +71,6 @@ raptOR is a target-shooting score log (decimal scoring up to 10.9, 10-shot serie
 - Database: `supabase db push` (linked to `kmxjerumxxcszvpiiixc`).
 - Function: `supabase functions deploy read-scoreboard --project-ref kmxjerumxxcszvpiiixc --use-api` (`--use-api` avoids needing Docker).
 - Gemini key: `supabase secrets set GEMINI_API_KEY=...`.
-- Site: push to `main`; Cloudflare Workers Builds deploys it. Other branches get preview URLs. Manual deploy: `npx wrangler deploy`.
+- Site: push to `main`; Vercel's Git integration deploys `web/`. It accepts collaborators' commits only because the repo is public (Hobby blocks them on private repos). Manual deploy: `npx vercel deploy web --prod`.
+- Pushing deploys only `web/`. Whoever changes `supabase/` runs the matching command above themselves, before pushing app code that depends on it.
 - Open copies pick up a deploy by themselves: `checkUpdate()` records the page's ETag at load and does a HEAD request on every `visibilitychange`. If the ETag has changed, it reloads, unless a scan review, the shot editor, a sign-in request or a password reset is open.
