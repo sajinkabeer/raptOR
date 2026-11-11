@@ -126,6 +126,10 @@ td.good{color:var(--good)} td.bad{color:var(--bad)}
 .srow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
 .srow b{font-size:16px}
 .srow .st{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
+.folder{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;margin-top:6px;color:var(--ink)}
+.folder b{font-size:17px;flex:1}
+.folder .chev{width:14px;color:var(--accent)}
+.folder .st{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
 .srow .go{grid-row:1 / span 2;grid-column:2;align-self:center;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 
 /* shot grid */
@@ -535,6 +539,7 @@ function mergeRemote(local, remote, pending){
 (function(){
 'use strict';
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var LABELS = ['Morning','Afternoon','Evening','Other'];
 var LS_LOCAL = 'raptor_v2_local'; // pre-account local data, offered for moving into the account
@@ -543,7 +548,7 @@ var state = {
   tab:'summary', sessions:[], cfg:Object.assign({}, DEFAULT_CFG), sync:'connecting',
   openId:null, metric:'avg',
   log:{active:null, result:null}, countUp:true,
-  edit:null, preview:null, stray:[], confirm:null, scan:null,
+  edit:null, preview:null, stray:[], confirm:null, scan:null, folders:{},
   user:null, auth:{mode:'signin', email:'', busy:false, msg:''}
 };
 var lastSig = '';
@@ -942,12 +947,27 @@ function viewSessions(){
   if (state.openId){ var s = getSession(state.openId); if (s) return viewDetail(s); state.openId = null; }
   var list = sorted(); if (!list.length) return emptyState();
   var h = '<div class="row between"><div class="lab">' + list.length + ' session' + (list.length > 1 ? 's' : '') + ' · newest first</div><button class="btn sm" data-act="manual">+ Enter shots</button></div>';
+  var groups = [], byKey = {};
   list.slice().reverse().forEach(function(s){
+    var k = String(s.date).slice(0, 7);
+    if (!byKey[k]){ byKey[k] = {key:k, items:[]}; groups.push(byKey[k]); }
+    byKey[k].items.push(s);
+  });
+  var thisYear = todayISO().slice(0, 4);
+  groups.forEach(function(g, gi){
+    var open = g.key in state.folders ? state.folders[g.key] : gi === 0;
+    var y = g.key.slice(0, 4), mo = MONTH_NAMES[+g.key.slice(5, 7) - 1] || g.key;
+    var mc = calc(pool(g.items), cfg());
+    h += '<button class="folder" data-act="folder" data-k="' + esc(g.key) + '" aria-expanded="' + open + '"><span class="chev">' + (open ? '▾' : '▸') + '</span><b>' + esc(mo) + (y !== thisYear ? ' <span class="muted">' + esc(y) + '</span>' : '') + '</b>'
+      + '<span class="st">' + g.items.length + ' session' + (g.items.length > 1 ? 's' : '') + (mc.n ? ' · ' + f2(mc.avg) + ' avg' : '') + '</span></button>';
+    if (open) g.items.forEach(row);
+  });
+  return h;
+  function row(s){
     var i = list.indexOf(s), c = calc(s, cfg()), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
     h += '<button class="srow" data-act="open" data-id="' + esc(s.id) + '"><b>' + esc(nameOf(s)) + '</b><div class="st">' + (rifleText(s) ? '<span>' + esc(rifleText(s)) + '</span>' : '') + '<span>' + c.n + ' shots</span><span>' + f1(c.sum) + ' pts</span><span>' + f2(c.avg) + ' avg</span><span>' + f1(c.tensPct) + '% tens</span></div>'
       + '<div class="go">' + (d ? chip(d.avgPct, 1, '%', true) : '<span class="pill">first</span>') + (c.missing.length ? '<span class="pill">' + c.missing.length + ' missing</span>' : '') + '</div></button>';
-  });
-  return h;
+  }
 }
 function viewDetail(s){
   var c = calc(s, cfg()), list = sorted(), i = list.indexOf(s), prev = i > 0 ? calc(list[i-1], cfg()) : null, d = compare(c, prev);
@@ -1400,6 +1420,7 @@ var handlers = {
   metric:function(el){ state.metric = el.dataset.v; render(); },
   open:function(el){ var id = el.dataset.id; fade(function(){ state.tab = 'sessions'; state.openId = id; state.confirm = null; render(); window.scrollTo(0,0); }); },
   back:function(){ fade(function(){ state.openId = null; render(); }); },
+  folder:function(el){ var k = el.dataset.k; state.folders[k] = el.getAttribute('aria-expanded') !== 'true'; render(); },
   whole:function(el){ var P = padTarget(); P.whole = +el.dataset.v; render(); },
   dec:function(el){ var P = padTarget(); P.dec = +el.dataset.v; render(); },
   dir:function(el){ var P = padTarget(); P.dir = el.dataset.v; render(); },
